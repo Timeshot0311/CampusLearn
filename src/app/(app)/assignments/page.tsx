@@ -15,12 +15,14 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { generateAssignmentFeedback } from "@/ai/flows/ai-powered-feedback-generator";
+import { Loader2 } from "lucide-react";
 
 const studentAssignments = [
   { name: "Quantum Entanglement Essay", course: "Quantum Computing", dueDate: "2024-08-15", status: "Submitted" },
@@ -42,6 +44,7 @@ function GradeDialog({ submission }: { submission: (typeof tutorSubmissions)[0] 
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [guidelines, setGuidelines] = useState("");
+  const [open, setOpen] = useState(false);
 
   const handleGenerateFeedback = async () => {
     setLoading(true);
@@ -63,9 +66,18 @@ function GradeDialog({ submission }: { submission: (typeof tutorSubmissions)[0] 
     }
     setLoading(false);
   };
+
+  const handleSubmitGrade = () => {
+    // Simulate submitting the grade
+    toast({
+        title: "Grade Submitted!",
+        description: `Feedback for ${submission.student} has been saved.`
+    });
+    setOpen(false);
+  }
   
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm">Grade</Button>
       </DialogTrigger>
@@ -75,7 +87,7 @@ function GradeDialog({ submission }: { submission: (typeof tutorSubmissions)[0] 
           <DialogDescription>Student: {submission.student} | Course: {submission.course}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-            <p className="text-sm text-muted-foreground"><strong>Submission:</strong> {submission.submission}</p>
+            <p className="text-sm text-muted-foreground p-4 bg-muted/50 rounded-lg"><strong>Submission:</strong> {submission.submission}</p>
           <div className="grid gap-2">
             <Label htmlFor="guidelines">Feedback Guidelines (Optional)</Label>
             <Textarea 
@@ -86,6 +98,7 @@ function GradeDialog({ submission }: { submission: (typeof tutorSubmissions)[0] 
             />
           </div>
           <Button onClick={handleGenerateFeedback} disabled={loading} className="w-fit">
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {loading ? "Generating..." : "Generate AI Feedback"}
           </Button>
           <div className="grid gap-2">
@@ -94,7 +107,10 @@ function GradeDialog({ submission }: { submission: (typeof tutorSubmissions)[0] 
           </div>
         </div>
         <DialogFooter>
-          <Button type="submit">Submit Grade</Button>
+            <DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+            </DialogClose>
+          <Button onClick={handleSubmitGrade} disabled={!feedback}>Submit Grade</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -159,7 +175,7 @@ function TutorSubmissions() {
                     </TableHeader>
                     <TableBody>
                         {tutorSubmissions.map((submission) => (
-                        <TableRow key={submission.student}>
+                        <TableRow key={submission.student + submission.assignment}>
                             <TableCell>
                                 <div className="flex items-center gap-2">
                                     <Avatar className="h-8 w-8">

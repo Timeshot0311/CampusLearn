@@ -21,16 +21,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Bot } from "lucide-react";
+import { Bot } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useEffect, useState } from "react";
 import { aiTutoringAssistant } from "@/ai/flows/ai-tutoring-assistant";
 import { getLearningRecommendations } from "@/ai/flows/learning-recommendations";
 import { useToast } from "@/hooks/use-toast";
+import Link from "next/link";
 
 const courses = [
   {
+    id: "quantum-computing",
     title: "Introduction to Quantum Computing",
     description: "Learn the fundamentals of quantum mechanics and computation.",
     image: "https://picsum.photos/600/400?random=1",
@@ -38,6 +40,7 @@ const courses = [
     progress: 75,
   },
   {
+    id: "organic-chemistry",
     title: "Advanced Organic Chemistry",
     description: "Deep dive into complex molecular structures and reactions.",
     image: "https://picsum.photos/600/400?random=2",
@@ -45,6 +48,7 @@ const courses = [
     progress: 40,
   },
   {
+    id: "ancient-philosophy",
     title: "History of Ancient Philosophy",
     description: "Explore the thoughts of Socrates, Plato, and Aristotle.",
     image: "https://picsum.photos/600/400?random=3",
@@ -78,11 +82,12 @@ function CourseCard({ course }: { course: (typeof courses)[0] }) {
   const [animationDelay, setAnimationDelay] = useState("0s");
 
   useEffect(() => {
+    // This hook ensures the random delay is only generated on the client, preventing hydration mismatch.
     setAnimationDelay(`${Math.random() * 0.5}s`);
   }, []);
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col">
       <CardHeader className="p-0">
         <Image
           alt={course.title}
@@ -93,7 +98,7 @@ function CourseCard({ course }: { course: (typeof courses)[0] }) {
           data-ai-hint={course.dataAiHint}
         />
       </CardHeader>
-      <CardContent className="p-4">
+      <CardContent className="p-4 flex-grow">
         <h3 className="text-lg font-bold font-headline">{course.title}</h3>
         <p className="text-sm text-muted-foreground mt-1">
           {course.description}
@@ -102,7 +107,9 @@ function CourseCard({ course }: { course: (typeof courses)[0] }) {
         <p className="text-xs text-muted-foreground mt-1">{course.progress}% complete</p>
       </CardContent>
       <CardFooter className="p-4 pt-0">
-        <Button size="sm" className="w-full">Continue Learning</Button>
+        <Button size="sm" className="w-full" asChild>
+            <Link href={`/courses/${course.id}`}>Continue Learning</Link>
+        </Button>
       </CardFooter>
     </Card>
   );
@@ -127,20 +134,22 @@ export function DashboardStudent() {
   const handleAskTutor = async () => {
     if (!tutorQuestion.trim()) return;
     setTutorLoading(true);
-    setTutorHistory(prev => [...prev, { type: 'user', text: tutorQuestion }]);
+    const newHistory = [...tutorHistory, { type: 'user' as const, text: tutorQuestion }];
+    setTutorHistory(newHistory);
+    setTutorQuestion("");
     try {
       const result = await aiTutoringAssistant({
         question: tutorQuestion,
         courseMaterials: "Vast knowledge of all course materials." // Using dummy data
       });
       setTutorHistory(prev => [...prev, { type: 'ai', text: result.answer }]);
-      setTutorQuestion("");
     } catch (error) {
       toast({
         title: "Error Getting Answer",
         description: "There was an error getting an answer from the AI tutor. Please try again.",
         variant: "destructive",
       });
+       setTutorHistory(newHistory); // Reset history if AI fails
     }
     setTutorLoading(false);
   };
@@ -199,7 +208,7 @@ export function DashboardStudent() {
                 {deadlines.map((deadline) => (
                   <TableRow key={deadline.assignment}>
                     <TableCell className="font-medium">{deadline.assignment}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{deadline.course}</TableCell>
+                    <TableCell className="hidden sm-table-cell">{deadline.course}</TableCell>
                     <TableCell>{deadline.dueDate}</TableCell>
                     <TableCell className="text-right">
                       <Badge variant={deadline.priority === 'High' ? 'destructive' : 'secondary'}>{deadline.priority}</Badge>
