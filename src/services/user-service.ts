@@ -42,7 +42,7 @@ export async function updateUser(id: string, user: Partial<User>): Promise<void>
     await updateDoc(docRef, user);
 }
 
-export async function setUser(id: string, user: User): Promise<void> {
+export async function setUser(id: string, user: Omit<User, 'id'>): Promise<void> {
     if (!db) throw new Error("Firebase not initialized");
     const docRef = doc(db, 'users', id);
     await setDoc(docRef, user);
