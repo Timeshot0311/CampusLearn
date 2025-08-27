@@ -236,19 +236,21 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
             <h2 className="text-xl font-semibold font-headline mb-4">Discussion</h2>
             <div className="space-y-6">
               {topicData.replies.map((reply: any, index: number) => (
-                <div key={index} className="flex items-start gap-4">
-                  <Avatar>
-                    <AvatarImage src={reply.authorAvatar} alt={reply.author} />
-                    <AvatarFallback>{reply.author?.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-center">
-                        <p className="font-semibold">{reply.author} <span className="text-xs font-normal text-muted-foreground capitalize">({reply.role})</span></p>
-                        <p className="text-xs text-muted-foreground">{reply.timestamp}</p>
+                reply.author && reply.text && (
+                    <div key={index} className="flex items-start gap-4">
+                        <Avatar>
+                            <AvatarImage src={reply.authorAvatar} alt={reply.author} />
+                            <AvatarFallback>{reply.author?.charAt(0) || 'U'}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                            <div className="flex justify-between items-center">
+                                <p className="font-semibold">{reply.author} <span className="text-xs font-normal text-muted-foreground capitalize">({reply.role})</span></p>
+                                <p className="text-xs text-muted-foreground">{reply.timestamp}</p>
+                            </div>
+                            <p className="text-sm mt-1 p-3 bg-muted/50 rounded-lg">{reply.text}</p>
+                        </div>
                     </div>
-                    <p className="text-sm mt-1 p-3 bg-muted/50 rounded-lg">{reply.text}</p>
-                  </div>
-                </div>
+                )
               ))}
             </div>
           </CardContent>
