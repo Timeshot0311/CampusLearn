@@ -20,6 +20,7 @@ import { Paperclip, FileText, Video, Music, Send, MoreVertical, Download } from 
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 
 const topicsData = {
@@ -104,10 +105,11 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
   const [newReply, setNewReply] = useState("");
   const isTutorOrLecturer = user.role === "tutor" || user.role === "lecturer";
   const isClosed = topicData.status === "Closed";
+  const canReply = !isClosed || user.role !== 'student';
 
 
   const handleSendReply = () => {
-    if (!newReply.trim() || isClosed) return;
+    if (!newReply.trim() || !canReply) return;
 
     const reply = {
         author: user.name,
@@ -167,21 +169,21 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
                 <CardDescription className="mt-2">{topicData.description}</CardDescription>
               </div>
                <div className="flex items-center gap-2">
-                 <Badge variant={topicData.status === 'Open' ? 'default' : topicData.status === 'Reopened' ? 'secondary' : 'destructive'} className="capitalize">{topicData.status}</Badge>
-                {isTutorOrLecturer && (
-                  <DropdownMenu>
+                <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
+                        <div className="flex items-center gap-2 cursor-pointer">
+                            <Badge variant={topicData.status === 'Open' ? 'default' : topicData.status === 'Reopened' ? 'secondary' : 'destructive'} className="capitalize">{topicData.status}</Badge>
+                            {isTutorOrLecturer && <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>}
+                        </div>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleStatusChange("Open")}>Mark as Open</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleStatusChange("Closed")}>Mark as Closed</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleStatusChange("Reopened")}>Mark as Reopened</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+                     {isTutorOrLecturer && (
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleStatusChange("Open")} className="text-green-600 focus:text-green-600">Mark as Open</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange("Reopened")} className="text-blue-600 focus:text-blue-600">Mark as Reopened</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange("Closed")} className="text-red-600 focus:text-red-600">Mark as Closed</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      )}
+                </DropdownMenu>
                </div>
             </div>
              <div className="flex items-center gap-2 text-sm text-muted-foreground pt-4">
@@ -217,14 +219,14 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
              <h3 className="font-semibold">Post a Reply</h3>
              <div className="w-full relative">
                 <Textarea 
-                    placeholder={isClosed && !isTutorOrLecturer ? "This topic is closed." : "Type your message here..."}
+                    placeholder={!canReply ? "This topic is closed for students." : "Type your message here..."}
                     value={newReply}
                     onChange={(e) => setNewReply(e.target.value)}
                     rows={4}
                     className="pr-24"
-                    disabled={isClosed && !isTutorOrLecturer}
+                    disabled={!canReply}
                 />
-                <Button className="absolute bottom-3 right-3" size="sm" onClick={handleSendReply} disabled={!newReply.trim() || (isClosed && !isTutorOrLecturer)}>
+                <Button className="absolute bottom-3 right-3" size="sm" onClick={handleSendReply} disabled={!newReply.trim() || !canReply}>
                     Send <Send className="ml-2 h-4 w-4"/>
                 </Button>
              </div>
