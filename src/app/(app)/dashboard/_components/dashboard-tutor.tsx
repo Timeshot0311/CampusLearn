@@ -38,7 +38,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { FileEdit, Lightbulb, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,33 +46,8 @@ import { useToast } from "@/hooks/use-toast";
 import { generateQuiz } from "@/ai/flows/smart-quiz-generation";
 import { generateAssignmentFeedback } from "@/ai/flows/ai-powered-feedback-generator";
 import { Badge } from "@/components/ui/badge";
-
-const recentSubmissions = [
-  {
-    student: "Alice Johnson",
-    avatar: "https://i.pravatar.cc/150?u=alice",
-    course: "Quantum Computing",
-    assignment: "Problem Set 3",
-    submitted: "2 hours ago",
-    submission: "The student's submission text for Problem Set 3..."
-  },
-  {
-    student: "Bob Williams",
-    avatar: "https://i.pravatar.cc/150?u=bob",
-    course: "Organic Chemistry",
-    assignment: "Lab Report 2",
-    submitted: "5 hours ago",
-    submission: "The student's submission text for Lab Report 2..."
-  },
-  {
-    student: "Charlie Brown",
-    avatar: "https://i.pravatar.cc/150?u=charlie",
-    course: "Ancient Philosophy",
-    assignment: "Essay on Stoicism",
-    submitted: "1 day ago",
-    submission: "The student's submission text for the Essay on Stoicism..."
-  },
-];
+import { Submission, getTutorSubmissions } from "@/services/assignment-service";
+import { Grade, getTutorGradebook } from "@/services/grade-service";
 
 const performanceData = [
   { name: 'Quiz 1', avgScore: 78 },
@@ -249,6 +224,32 @@ function FeedbackGeneratorDialog() {
 }
 
 export function DashboardTutor() {
+    const { toast } = useToast();
+    const [loading, setLoading] = useState(true);
+    const [submissions, setSubmissions] = useState<Submission[]>([]);
+    const [grades, setGrades] = useState<Grade[]>([]);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                const [fetchedSubmissions, fetchedGrades] = await Promise.all([
+                    getTutorSubmissions("tutor-id-placeholder"),
+                    getTutorGradebook("tutor-id-placeholder")
+                ]);
+                setSubmissions(fetchedSubmissions);
+                // In a real app, grades would be linked to submissions to determine what is pending
+                const gradedAssignmentIds = new Set(fetchedGrades.map(g => g.assignment));
+                // setPendingSubmissions(fetchedSubmissions.filter(s => !gradedAssignmentIds.has(s.assignment)));
+            } catch (error) {
+                 toast({ title: "Error fetching tutor data", variant: "destructive" });
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, [toast]);
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div className="lg:col-span-2 flex flex-col gap-6">
@@ -268,7 +269,7 @@ export function DashboardTutor() {
                     <CardDescription>Assignments needing review</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-4xl font-bold">14</p>
+                    <p className="text-4xl font-bold">{submissions.length}</p>
                 </CardContent>
             </Card>
         </div>
@@ -290,22 +291,28 @@ export function DashboardTutor() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentSubmissions.map((submission) => (
-                  <TableRow key={submission.student}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={submission.avatar} alt={submission.student} />
-                          <AvatarFallback>{submission.student.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium">{submission.student}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{submission.course}</TableCell>
-                    <TableCell>{submission.assignment}</TableCell>
-                    <TableCell className="text-right">{submission.submitted}</TableCell>
-                  </TableRow>
-                ))}
+                {loading ? (
+                    <TableRow><TableCell colSpan={4}>Loading submissions...</TableCell></TableRow>
+                ) : submissions.length > 0 ? (
+                    submissions.slice(0, 5).map((submission) => (
+                    <TableRow key={submission.id}>
+                        <TableCell>
+                        <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                            <AvatarImage src={submission.avatar} alt={submission.student} />
+                            <AvatarFallback>{submission.student.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{submission.student}</span>
+                        </div>
+                        </TableCell>
+                        <TableCell>{submission.course}</TableCell>
+                        <TableCell>{submission.assignment}</TableCell>
+                        <TableCell className="text-right">{submission.submitted}</TableCell>
+                    </TableRow>
+                    ))
+                ) : (
+                    <TableRow><TableCell colSpan={4}>No recent submissions.</TableCell></TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -28,6 +29,10 @@ import {
   Area,
 } from "recharts";
 import { Users, Package, Activity, ArrowUp } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { getCourses } from "@/services/course-service";
+import { getUsers } from "@/services/user-service";
 
 const enrollmentData = [
   { month: 'Jan', enrollments: 120 },
@@ -46,6 +51,31 @@ const recentActivity = [
 ]
 
 export function DashboardAdmin() {
+    const { toast } = useToast();
+    const [loading, setLoading] = useState(true);
+    const [totalUsers, setTotalUsers] = useState(0);
+    const [totalCourses, setTotalCourses] = useState(0);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                const [fetchedUsers, fetchedCourses] = await Promise.all([
+                    getUsers(),
+                    getCourses()
+                ]);
+                setTotalUsers(fetchedUsers.length);
+                setTotalCourses(fetchedCourses.length);
+            } catch (error) {
+                toast({ title: "Error fetching admin data", variant: "destructive" });
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, [toast]);
+
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="grid gap-6 md:grid-cols-3 lg:col-span-3">
@@ -55,8 +85,8 @@ export function DashboardAdmin() {
                     <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">1,482</div>
-                    <p className="text-xs text-muted-foreground">+20.1% from last month</p>
+                    <div className="text-2xl font-bold">{loading ? '...' : totalUsers}</div>
+                    <p className="text-xs text-muted-foreground">+2 from last month</p>
                 </CardContent>
             </Card>
              <Card>
@@ -65,8 +95,8 @@ export function DashboardAdmin() {
                     <Package className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">73</div>
-                    <p className="text-xs text-muted-foreground">+5 from last month</p>
+                    <div className="text-2xl font-bold">{loading ? '...' : totalCourses}</div>
+                    <p className="text-xs text-muted-foreground">+1 from last month</p>
                 </CardContent>
             </Card>
              <Card>

@@ -29,56 +29,12 @@ import { aiTutoringAssistant } from "@/ai/flows/ai-tutoring-assistant";
 import { getLearningRecommendations } from "@/ai/flows/learning-recommendations";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
+import { Course, getCourses } from "@/services/course-service";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Assignment, getStudentAssignments } from "@/services/assignment-service";
 
-const courses = [
-  {
-    id: "quantum-computing",
-    title: "Introduction to Quantum Computing",
-    description: "Learn the fundamentals of quantum mechanics and computation.",
-    image: "https://picsum.photos/600/400?random=1",
-    dataAiHint: "technology abstract",
-    progress: 75,
-  },
-  {
-    id: "organic-chemistry",
-    title: "Advanced Organic Chemistry",
-    description: "Deep dive into complex molecular structures and reactions.",
-    image: "https://picsum.photos/600/400?random=2",
-    dataAiHint: "science laboratory",
-    progress: 40,
-  },
-  {
-    id: "ancient-philosophy",
-    title: "History of Ancient Philosophy",
-    description: "Explore the thoughts of Socrates, Plato, and Aristotle.",
-    image: "https://picsum.photos/600/400?random=3",
-    dataAiHint: "history ancient",
-    progress: 90,
-  },
-];
 
-const deadlines = [
-  {
-    assignment: "Quantum Entanglement Essay",
-    course: "Quantum Computing",
-    dueDate: "2024-08-15",
-    priority: "High",
-  },
-  {
-    assignment: "Benzene Reactions Lab Report",
-    course: "Organic Chemistry",
-    dueDate: "2024-08-18",
-    priority: "High",
-  },
-  {
-    assignment: "Plato's 'Republic' Analysis",
-    course: "Ancient Philosophy",
-    dueDate: "2024-08-22",
-    priority: "Medium",
-  },
-];
-
-function CourseCard({ course }: { course: (typeof courses)[0] }) {
+function CourseCard({ course }: { course: Course }) {
   const [animationDelay, setAnimationDelay] = useState("0s");
 
   useEffect(() => {
@@ -101,7 +57,7 @@ function CourseCard({ course }: { course: (typeof courses)[0] }) {
       <CardContent className="p-4 flex-grow">
         <h3 className="text-lg font-bold font-headline">{course.title}</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          {course.description}
+          Taught by {course.instructor}
         </p>
         <Progress value={course.progress} className="mt-4 animate-progress" style={{ animationDelay }} />
         <p className="text-xs text-muted-foreground mt-1">{course.progress}% complete</p>
@@ -118,6 +74,10 @@ function CourseCard({ course }: { course: (typeof courses)[0] }) {
 
 export function DashboardStudent() {
   const { toast } = useToast();
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [deadlines, setDeadlines] = useState<Assignment[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [tutorQuestion, setTutorQuestion] = useState("");
   const [tutorHistory, setTutorHistory] = useState<{ type: 'user' | 'ai'; text: string }[]>([
       { type: 'ai', text: "Hello! How can I help you with your studies today?" }
@@ -125,11 +85,34 @@ export function DashboardStudent() {
   const [tutorLoading, setTutorLoading] = useState(false);
 
   const [recommendations, setRecommendations] = useState([
-    "Module 5: Quantum Algorithms",
-    "Review Quiz: Superposition",
-    "Supplemental Reading: The Fabric of the Cosmos"
+    "Click 'Get New Recommendations' to generate a personalized learning path."
   ]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const [fetchedCourses, fetchedAssignments] = await Promise.all([
+                getCourses(),
+                getStudentAssignments("student-id-placeholder") // In a real app, use the actual student ID
+            ]);
+            // For the dashboard, we only show a few courses
+            setCourses(fetchedCourses.slice(0, 2));
+            setDeadlines(fetchedAssignments.filter(a => a.status !== "Submitted"));
+
+        } catch (error) {
+            toast({
+                title: "Error fetching dashboard data",
+                variant: "destructive"
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchData();
+  }, [toast]);
+
 
   const handleAskTutor = async () => {
     if (!tutorQuestion.trim()) return;
@@ -140,7 +123,7 @@ export function DashboardStudent() {
     try {
       const result = await aiTutoringAssistant({
         question: tutorQuestion,
-        courseMaterials: "Vast knowledge of all course materials." // Using dummy data
+        courseMaterials: "Vast knowledge of all course materials." // In a real app, you would fetch relevant course materials
       });
       setTutorHistory(prev => [...prev, { type: 'ai', text: result.answer }]);
     } catch (error) {
@@ -182,9 +165,15 @@ export function DashboardStudent() {
         <div>
           <h2 className="text-2xl font-semibold font-headline mb-4">My Courses</h2>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
-            {courses.map((course) => (
-              <CourseCard key={course.title} course={course} />
-            ))}
+            {loading ? (
+                Array.from({length: 2}).map((_, i) => (
+                    <Card key={i}><CardContent className="p-4"><Skeleton className="w-full h-56"/></CardContent></Card>
+                ))
+            ) : (
+                courses.map((course) => (
+                    <CourseCard key={course.id} course={course} />
+                ))
+            )}
           </div>
         </div>
         <Card>
@@ -201,20 +190,26 @@ export function DashboardStudent() {
                   <TableHead>Assignment</TableHead>
                   <TableHead className="hidden sm:table-cell">Course</TableHead>
                   <TableHead>Due Date</TableHead>
-                  <TableHead className="text-right">Priority</TableHead>
+                  <TableHead className="text-right">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {deadlines.map((deadline) => (
-                  <TableRow key={deadline.assignment}>
-                    <TableCell className="font-medium">{deadline.assignment}</TableCell>
-                    <TableCell className="hidden sm-table-cell">{deadline.course}</TableCell>
-                    <TableCell>{deadline.dueDate}</TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant={deadline.priority === 'High' ? 'destructive' : 'secondary'}>{deadline.priority}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                 {loading ? (
+                    <TableRow><TableCell colSpan={4}>Loading deadlines...</TableCell></TableRow>
+                 ) : deadlines.length > 0 ? (
+                    deadlines.map((deadline) => (
+                        <TableRow key={deadline.id}>
+                            <TableCell className="font-medium">{deadline.name}</TableCell>
+                            <TableCell className="hidden sm-table-cell">{deadline.course}</TableCell>
+                            <TableCell>{deadline.dueDate}</TableCell>
+                            <TableCell className="text-right">
+                            <Badge variant="secondary">{deadline.status}</Badge>
+                            </TableCell>
+                        </TableRow>
+                    ))
+                 ) : (
+                    <TableRow><TableCell colSpan={4}>No upcoming deadlines.</TableCell></TableRow>
+                 )}
               </TableBody>
             </Table>
           </CardContent>
