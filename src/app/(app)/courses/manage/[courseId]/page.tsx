@@ -157,7 +157,7 @@ export default function CourseContentEditor() {
                                 <AccordionContent>
                                     <ul className="space-y-3 pl-8 py-4">
                                         {module.lessons.map((lesson) => (
-                                            <li key={lesson.id} className="flex justify-between items-center p-3 bg-muted/50 rounded-md">
+                                            <li key={`${module.id}-${lesson.id}`} className="flex justify-between items-center p-3 bg-muted/50 rounded-md">
                                                 <div>
                                                     <p className="font-medium">{lesson.title}</p>
                                                     <p className="text-sm text-muted-foreground capitalize">{lesson.type}</p>
