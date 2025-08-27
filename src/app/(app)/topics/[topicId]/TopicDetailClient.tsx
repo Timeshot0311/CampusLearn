@@ -1,3 +1,4 @@
+
 "use client";
 import { useState, useEffect } from "react";
 import {
@@ -13,74 +14,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Paperclip, FileText, Video, Music, Send, MoreVertical, Download } from "lucide-react";
+import { Paperclip, FileText, Video, Music, Send, MoreVertical, Download, ClipboardCheck } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 
-
-const initialTopicsData: Record<string, any> = {
-  "1": {
-    id: "1",
-    title: "Confused about Quantum Tunneling",
-    description: "Can someone explain the probability calculation for a particle to tunnel through a barrier? I'm not getting it. Specifically, I'm stuck on how the wave function decays inside the barrier and what the transmission coefficient represents. An example calculation would be amazing!",
-    course: "Quantum Computing",
-    author: "Alex Doe",
-    authorAvatar: "https://i.pravatar.cc/150?u=alex",
-    status: "Open",
-    replies: [
-      {
-        author: "Dr. Evelyn Reed",
-        authorAvatar: "https://i.pravatar.cc/150?u=evelyn",
-        role: "tutor",
-        text: "Great question, Alex! The key is the Schrödinger equation. Inside the barrier (where V > E), the solution is a decaying exponential. The transmission coefficient (T) is essentially the ratio of the squared amplitude of the transmitted wave to the incident wave. It's usually very small. I've attached a PDF with a worked example.",
-        timestamp: "2 hours ago",
-      },
-      {
-        author: "Alex Doe",
-        authorAvatar: "https://i.pravatar.cc/150?u=alex",
-        role: "student",
-        text: "Thanks, Dr. Reed! The PDF is super helpful. The example makes it much clearer now. So, T depends exponentially on the barrier width and the energy difference (V-E)?",
-        timestamp: "1 hour ago",
-      }
-    ],
-    materials: [
-      { name: "Tunneling_Example.pdf", type: "pdf" },
-      { name: "Intro_to_Tunneling.mp4", type: "video" },
-    ]
-  },
-  "2": {
-    id: "2",
-    title: "Help with SN1 vs. SN2 Reactions",
-    description: "What are the key factors to decide if a reaction is SN1 or SN2? The solvent effects are particularly tricky for me.",
-    course: "Organic Chemistry",
-    author: "Charlie Brown",
-    authorAvatar: "https://i.pravatar.cc/150?u=charlie",
-    status: "Open",
-    replies: [],
-    materials: []
-  },
-  "3": {
-    id: "3",
-    title: "Aristotle's Four Causes",
-    description: "I've read the chapter, but I'm looking for more examples of the material, formal, efficient, and final causes. The textbook is a bit dry.",
-    course: "Ancient Philosophy",
-    author: "Bob Williams",
-    authorAvatar: "https://i.pravatar.cc/150?u=bob",
-    status: "Closed",
-    replies: [
-        {
-            author: "Dr. Samuel Green",
-            authorAvatar: "https://i.pravatar.cc/150?u=samuel",
-            role: "lecturer",
-            text: "Let's use a simple example: a wooden chair. The material cause is the wood. The formal cause is the design or shape of the chair. The efficient cause is the carpenter who built it. The final cause is its purpose: to be sat upon.",
-            timestamp: "3 days ago"
-        }
-    ],
-    materials: []
-  }
-}
 
 type TopicStatus = "Open" | "Closed" | "Reopened";
 
@@ -91,17 +30,13 @@ function getTopicFromStorage(topicId: string) {
         const topics = JSON.parse(storedTopics);
         return topics.find((t: any) => t.id === topicId) || null;
     }
-    const initialTopic = initialTopicsData[topicId as keyof typeof initialTopicsData] || null;
-    if (initialTopic) {
-        localStorage.setItem("topics", JSON.stringify(Object.values(initialTopicsData)))
-    }
-    return initialTopic;
+    return null;
 }
 
 function updateTopicInStorage(topic: any) {
     if (typeof window === 'undefined') return;
     const storedTopics = localStorage.getItem('topics');
-    let allTopics = storedTopics ? JSON.parse(storedTopics) : Object.values(initialTopicsData);
+    let allTopics = storedTopics ? JSON.parse(storedTopics) : [];
 
     const index = allTopics.findIndex((t: any) => t.id === topic.id);
     if (index !== -1) {
