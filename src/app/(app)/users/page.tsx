@@ -41,21 +41,28 @@ import {
 
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Role } from "@/hooks/use-auth";
 import { addUser, deleteUser, getUsers, updateUser, User } from "@/services/user-service";
 
-function UserDialog({ onSave, user, children }: { onSave: (user: User) => void; user?: User; children: React.ReactNode }) {
+function UserDialog({ onSave, user, children }: { onSave: (user: User, password?: string) => void; user?: User; children: React.ReactNode }) {
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [role, setRole] = useState<User['role']>(user?.role || "student");
+  const [password, setPassword] = useState("");
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
+
+  const isEditing = !!user;
 
   const handleSave = () => {
     if (!name || !email) {
         toast({ title: "Validation Error", description: "Name and email are required.", variant: "destructive"});
         return;
     }
+    if (!isEditing && !password) {
+        toast({ title: "Validation Error", description: "Password is required for new users.", variant: "destructive"});
+        return;
+    }
+
     const userData: User = {
         id: user?.id || '',
         name,
@@ -65,20 +72,23 @@ function UserDialog({ onSave, user, children }: { onSave: (user: User) => void; 
         avatar: user?.avatar || `https://i.pravatar.cc/150?u=${name.split(' ')[0]}`
     };
 
-    onSave(userData);
+    onSave(userData, isEditing ? undefined : password);
     setOpen(false);
-    toast({ title: `User ${user ? 'updated' : 'added'} successfully!`});
   };
   
   useEffect(() => {
-    if (user) {
-      setName(user.name);
-      setEmail(user.email);
-      setRole(user.role);
-    } else {
-        setName("");
-        setEmail("");
-        setRole("student");
+    if (open) {
+      if (user) {
+        setName(user.name);
+        setEmail(user.email);
+        setRole(user.role);
+        setPassword("");
+      } else {
+          setName("");
+          setEmail("");
+          setRole("student");
+          setPassword("");
+      }
     }
   }, [user, open]);
 
@@ -116,6 +126,12 @@ function UserDialog({ onSave, user, children }: { onSave: (user: User) => void; 
               </SelectContent>
             </Select>
           </div>
+          {!isEditing && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="password" className="text-right">Password</Label>
+              <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Set initial password" className="col-span-3" />
+            </div>
+          )}
         </div>
         <DialogFooter>
             <DialogClose asChild>
@@ -138,7 +154,7 @@ function DeleteUserAlert({ userId, onDelete }: { userId: string, onDelete: (id: 
                 <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the user account.
+                        This action cannot be undone. This will permanently delete the user account from both authentication and the database.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -171,12 +187,22 @@ export default function UsersPage() {
   }, []);
 
 
-  const handleAddUser = async (user: User) => {
+  const handleSaveUser = async (user: User, password?: string) => {
+    const isEditing = !!user.id;
+    if (isEditing) {
+        await handleUpdateUser(user);
+    } else {
+        await handleAddUser(user, password!);
+    }
+  };
+
+  const handleAddUser = async (user: User, password: string) => {
     try {
-        const newUserId = await addUser(user);
+        const newUserId = await addUser(user, password);
         setUsers([...users, {...user, id: newUserId}]);
-    } catch (error) {
-        toast({ title: "Error adding user", variant: "destructive" });
+        toast({ title: "User created successfully!"});
+    } catch (error: any) {
+        toast({ title: "Error adding user", description: error.message, variant: "destructive" });
     }
   };
 
@@ -184,18 +210,20 @@ export default function UsersPage() {
     try {
         await updateUser(user.id, user);
         setUsers(users.map(u => u.id === user.id ? user : u));
-    } catch (error) {
-        toast({ title: "Error updating user", variant: "destructive" });
+        toast({ title: "User updated successfully!"});
+    } catch (error: any) {
+        toast({ title: "Error updating user", description: error.message, variant: "destructive" });
     }
   };
 
   const handleDeleteUser = async (id: string) => {
     try {
+        // This should also delete from Firebase Auth, which is not implemented yet.
         await deleteUser(id);
         setUsers(users.filter(u => u.id !== id));
         toast({ title: "User deleted successfully." });
-    } catch (error) {
-        toast({ title: "Error deleting user", variant: "destructive" });
+    } catch (error: any) {
+        toast({ title: "Error deleting user", description: error.message, variant: "destructive" });
     }
   };
   
@@ -206,8 +234,8 @@ export default function UsersPage() {
         await updateUser(user.id, updatedUser);
         setUsers(users.map(u => u.id === user.id ? updatedUser : u));
         toast({ title: `User has been ${newStatus === 'Inactive' ? "suspended" : "reactivated"}.` });
-    } catch (error) {
-        toast({ title: "Error updating user status", variant: "destructive" });
+    } catch (error: any) {
+        toast({ title: "Error updating user status", description: error.message, variant: "destructive" });
     }
   };
 
@@ -215,7 +243,7 @@ export default function UsersPage() {
     <div className="flex flex-col gap-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold font-headline">User Management</h1>
-        <UserDialog onSave={handleAddUser}>
+        <UserDialog onSave={handleSaveUser}>
              <Button>Add User</Button>
         </UserDialog>
       </div>
@@ -268,7 +296,7 @@ export default function UsersPage() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                    <UserDialog onSave={handleUpdateUser} user={user}>
+                                    <UserDialog onSave={handleSaveUser} user={user}>
                                         <button className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full">Edit</button>
                                     </UserDialog>
                                     <DropdownMenuItem onClick={() => handleSuspendUser(user)}>
