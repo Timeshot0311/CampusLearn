@@ -41,7 +41,7 @@ type Topic = {
   course: string;
   author: string;
   authorAvatar: string;
-  replies: any[]; // Changed to any[] to store full reply objects
+  replies: any[]; 
   status: TopicStatus;
   materials: any[];
 };
@@ -111,7 +111,7 @@ function CreateTopicDialog({ onSave }: { onSave: (topic: Omit<Topic, 'id' | 'aut
 }
 
 export default function TopicsPage() {
-  const [topics, setTopics] = useState<Topic[]>(initialTopics);
+  const [topics, setTopics] = useState<Topic[]>([]);
   const { user } = useAuth();
   const isStudent = user.role === "student";
 
@@ -121,6 +121,7 @@ export default function TopicsPage() {
       setTopics(JSON.parse(storedTopics));
     } else {
       localStorage.setItem("topics", JSON.stringify(initialTopics));
+      setTopics(initialTopics);
     }
   }, []);
 
@@ -201,5 +202,3 @@ export default function TopicsPage() {
 }
 
 const Fallback = AvatarFallback;
-
-    

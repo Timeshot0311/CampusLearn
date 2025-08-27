@@ -24,7 +24,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { cn } from "@/lib/utils";
 
 
-const topicsData = {
+const topicsData: Record<string, any> = {
   "1": {
     id: "1",
     title: "Confused about Quantum Tunneling",
@@ -94,7 +94,8 @@ function getTopicFromStorage(topicId: string) {
     const storedTopics = localStorage.getItem('topics');
     if (storedTopics) {
         const topics = JSON.parse(storedTopics);
-        return topics.find((t: any) => t.id === topicId) || topicsData[topicId as keyof typeof topicsData] || null;
+        const initialTopic = topicsData[topicId as keyof typeof topicsData] || null;
+        return topics.find((t: any) => t.id === topicId) || initialTopic;
     }
     return topicsData[topicId as keyof typeof topicsData] || null;
 }
@@ -107,9 +108,16 @@ function updateTopicInStorage(topic: any) {
         const index = topics.findIndex((t: any) => t.id === topic.id);
         if (index !== -1) {
             topics[index] = topic;
-            localStorage.setItem('topics', JSON.stringify(topics));
-            window.dispatchEvent(new Event('storage'));
+        } else {
+             // If topic doesn't exist, it might be one of the initial ones not yet in storage
+            const initialIndex = Object.keys(topicsData).findIndex(id => id === topic.id);
+            if(initialIndex !== -1) {
+                // This logic might need to be more robust depending on how topics are created and stored
+                topics.push(topic);
+            }
         }
+        localStorage.setItem('topics', JSON.stringify(topics));
+        window.dispatchEvent(new Event('storage'));
     }
 }
 
@@ -312,6 +320,3 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
     </div>
   );
 }
-
-    
-    
