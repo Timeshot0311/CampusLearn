@@ -22,6 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Bot } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const courses = [
   {
