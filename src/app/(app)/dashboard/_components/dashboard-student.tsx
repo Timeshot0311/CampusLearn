@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -23,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Bot } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useEffect, useState } from "react";
 
 const courses = [
   {
@@ -69,6 +71,41 @@ const deadlines = [
   },
 ];
 
+function CourseCard({ course }: { course: (typeof courses)[0] }) {
+  const [animationDelay, setAnimationDelay] = useState("0s");
+
+  useEffect(() => {
+    setAnimationDelay(`${Math.random() * 0.5}s`);
+  }, []);
+
+  return (
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+      <CardHeader className="p-0">
+        <Image
+          alt={course.title}
+          className="aspect-video w-full object-cover"
+          height="300"
+          src={course.image}
+          width="600"
+          data-ai-hint={course.dataAiHint}
+        />
+      </CardHeader>
+      <CardContent className="p-4">
+        <h3 className="text-lg font-bold font-headline">{course.title}</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          {course.description}
+        </p>
+        <Progress value={course.progress} className="mt-4 animate-progress" style={{ animationDelay }} />
+        <p className="text-xs text-muted-foreground mt-1">{course.progress}% complete</p>
+      </CardContent>
+      <CardFooter className="p-4 pt-0">
+        <Button size="sm" className="w-full">Continue Learning</Button>
+      </CardFooter>
+    </Card>
+  );
+}
+
+
 export function DashboardStudent() {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -77,29 +114,7 @@ export function DashboardStudent() {
           <h2 className="text-2xl font-semibold font-headline mb-4">My Courses</h2>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
             {courses.map((course) => (
-              <Card key={course.title} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                <CardHeader className="p-0">
-                  <Image
-                    alt={course.title}
-                    className="aspect-video w-full object-cover"
-                    height="300"
-                    src={course.image}
-                    width="600"
-                    data-ai-hint={course.dataAiHint}
-                  />
-                </CardHeader>
-                <CardContent className="p-4">
-                  <h3 className="text-lg font-bold font-headline">{course.title}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {course.description}
-                  </p>
-                  <Progress value={course.progress} className="mt-4 animate-progress" style={{animationDelay: `${Math.random() * 0.5}s`}} />
-                  <p className="text-xs text-muted-foreground mt-1">{course.progress}% complete</p>
-                </CardContent>
-                <CardFooter className="p-4 pt-0">
-                  <Button size="sm" className="w-full">Continue Learning</Button>
-                </CardFooter>
-              </Card>
+              <CourseCard key={course.title} course={course} />
             ))}
           </div>
         </div>
