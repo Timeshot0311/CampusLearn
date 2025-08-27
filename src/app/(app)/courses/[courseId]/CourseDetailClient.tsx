@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { PlayCircle, FileText, CheckCircle, BookOpen, Youtube, File, ClipboardCheck, Trash2, PlusCircle, Loader2, Upload, Pencil, Users, Send } from "lucide-react";
+import { PlayCircle, FileText, CheckCircle, BookOpen, Youtube, File, ClipboardCheck, Trash2, PlusCircle, Loader2, Upload, Pencil, Users, Send, UserPlus } from "lucide-react";
 import { Course, Module, Lesson, updateCourse, uploadCourseFile, getCourse } from "@/services/course-service";
 import { Topic, addTopic } from "@/services/topic-service";
 import { useState, useEffect } from "react";
@@ -25,6 +25,7 @@ import remarkGfm from 'remark-gfm';
 import { User, getUsers } from "@/services/user-service";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { EnrollStudentDialog } from "@/components/enroll-student-dialog";
 
 
 const LessonIcon = ({ type }: { type: Lesson['type'] }) => {
@@ -415,23 +416,25 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
   const isLecturerOrAdmin = user?.role === 'lecturer' || user?.role === 'admin';
   const isStudent = user?.role === 'student';
 
+  const fetchCourseAndUsers = async () => {
+      try {
+          setLoading(true);
+          const [fetchedCourse, fetchedUsers] = await Promise.all([
+              getCourse(courseId),
+              getUsers()
+          ]);
+          setCourse(fetchedCourse);
+          setAllUsers(fetchedUsers);
+      } catch (error) {
+          toast({ title: "Error fetching course data", variant: "destructive" });
+      } finally {
+          setLoading(false);
+      }
+  };
+
   useEffect(() => {
-    const fetchCourseAndUsers = async () => {
-        try {
-            setLoading(true);
-            const [fetchedCourse, fetchedUsers] = await Promise.all([
-                getCourse(courseId),
-                getUsers()
-            ]);
-            setCourse(fetchedCourse);
-            setAllUsers(fetchedUsers);
-        } catch (error) {
-            toast({ title: "Error fetching course data", variant: "destructive" });
-        } finally {
-            setLoading(false);
-        }
-    };
     fetchCourseAndUsers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId, toast]);
 
   
@@ -528,25 +531,30 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
                      <div className="flex justify-between items-center pt-4">
                         <CourseStaff course={course} allUsers={allUsers} />
                         {editMode && isLecturerOrAdmin && (
-                            <AssignStaffDialog course={course} onStaffAssigned={onCourseDataSaved}>
-                                <Button variant="outline" size="sm"><Users className="mr-2 h-4 w-4"/>Assign Staff</Button>
-                            </AssignStaffDialog>
+                            <div className="flex items-center gap-2">
+                                <AssignStaffDialog course={course} onStaffAssigned={onCourseDataSaved}>
+                                    <Button variant="outline" size="sm"><Users className="mr-2 h-4 w-4"/>Assign Staff</Button>
+                                </AssignStaffDialog>
+                                <EnrollStudentDialog allUsers={allUsers} course={course} onEnrollmentChanged={fetchCourseAndUsers}>
+                                    <Button variant="outline" size="sm"><UserPlus className="mr-2 h-4 w-4"/>Enroll</Button>
+                                </EnrollStudentDialog>
+                            </div>
                         )}
                     </div>
                 </CardHeader>
                 <CardContent>
                      <Accordion type="single" collapsible className="w-full" defaultValue={course.modules.length > 0 ? course.modules[0].id : undefined}>
                         {course.modules.map((module) => (
-                            <AccordionItem value={module.id} key={module.id}>
+                             <AccordionItem value={module.id} key={module.id}>
                                 <div className="flex items-center w-full">
                                     <AccordionTrigger className="text-lg font-semibold hover:no-underline flex-grow">
                                         <span>{module.title}</span>
                                     </AccordionTrigger>
-                                    {editMode && isLecturerOrAdmin && (
+                                     {editMode && isLecturerOrAdmin && (
                                         <div className="flex items-center pl-2">
-                                            <AlertDialog>
+                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/90 hover:bg-destructive/10" onClick={(e) => e.stopPropagation()}><Trash2 className="h-4 w-4" /></Button>
+                                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
                                                 </AlertDialogTrigger>
                                                 <AlertDialogContent>
                                                     <AlertDialogHeader>
@@ -579,7 +587,7 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
                                                             </EditLessonDialog>
                                                             <AlertDialog>
                                                                 <AlertDialogTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
+                                                                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
                                                                 </AlertDialogTrigger>
                                                                 <AlertDialogContent>
                                                                     <AlertDialogHeader>

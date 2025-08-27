@@ -50,6 +50,7 @@ import { useToast } from "@/hooks/use-toast";
 import { addUser, deleteUser, getUsers, updateUser, User } from "@/services/user-service";
 import { getCourses, Course } from "@/services/course-service";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { EnrollStudentDialog } from "@/components/enroll-student-dialog";
 
 function UserDialog({ onSave, user, courses, children }: { onSave: (user: User, password?: string) => void; user?: User; courses: Course[], children: React.ReactNode }) {
   const [name, setName] = useState(user?.name || "");
@@ -349,6 +350,11 @@ export default function UsersPage() {
                                     <UserDialog onSave={handleSaveUser} user={user} courses={courses}>
                                         <button className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full">Edit</button>
                                     </UserDialog>
+                                    {user.role === 'student' && (
+                                        <EnrollStudentDialog allUsers={[user]} allCourses={courses} onEnrollmentChanged={fetchData} fromUser>
+                                             <button className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full">Enroll in Course</button>
+                                        </EnrollStudentDialog>
+                                    )}
                                     <DropdownMenuItem onClick={() => handleSuspendUser(user)}>
                                         {user.status === 'Active' ? 'Suspend' : 'Reactivate'}
                                     </DropdownMenuItem>

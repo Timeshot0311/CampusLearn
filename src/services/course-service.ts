@@ -31,6 +31,7 @@ export type Course = {
     modules: Module[];
     assignedLecturers?: string[];
     assignedTutors?: string[];
+    enrolledStudents?: string[];
 };
 
 export async function getCourses(): Promise<Course[]> {

@@ -30,7 +30,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Users } from "lucide-react";
 
 
 function CourseDialog({ onSave }: { onSave: (course: Omit<Course, 'id' | 'modules' | 'progress' | 'published'>) => void; }) {
@@ -53,6 +53,7 @@ function CourseDialog({ onSave }: { onSave: (course: Omit<Course, 'id' | 'module
         image: `https://picsum.photos/seed/${title.replace(/\s+/g, '')}/600/300`,
         dataAiHint: "education learning",
         ownerId: user!.id,
+        enrolledStudents: [],
     };
 
     onSave(courseData);
@@ -119,6 +120,10 @@ function CourseCard({ course }: { course: Course }) {
         <p className="text-sm text-muted-foreground mt-1">
           Taught by {course.instructor}
         </p>
+        <div className="flex items-center text-sm text-muted-foreground mt-2">
+            <Users className="h-4 w-4 mr-2" />
+            <span>{course.enrolledStudents?.length || 0} Students</span>
+        </div>
         <Progress value={course.progress} className="mt-4" />
         <p className="text-xs text-muted-foreground mt-1">{course.progress}% complete</p>
       </CardContent>
