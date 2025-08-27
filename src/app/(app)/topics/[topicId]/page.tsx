@@ -134,10 +134,11 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
   const { toast } = useToast();
   
   const [topicData, setTopicData] = useState<any>(null);
+  const topicId = useMemo(() => params.topicId, [params.topicId]);
 
   useEffect(() => {
-    setTopicData(getTopicFromStorage(params.topicId));
-  }, [params.topicId]);
+    setTopicData(getTopicFromStorage(topicId));
+  }, [topicId]);
 
   const [newReply, setNewReply] = useState("");
   const isTutorOrLecturerOrAdmin = user.role === "tutor" || user.role === "lecturer" || user.role === "admin";
