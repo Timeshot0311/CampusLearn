@@ -25,6 +25,10 @@ import {
 } from "@/components/ui/sheet";
 import { usePathname } from 'next/navigation';
 import { cn } from "@/lib/utils";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import type { Role } from "@/services/user-service";
+
 
 const studentNav = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
@@ -68,6 +72,37 @@ const navItems = {
   admin: adminNav,
 };
 
+function RoleSwitcher() {
+    const { user, roles, setUserRole } = useAuth();
+    return (
+        <Card className="m-2">
+            <CardHeader className="p-4">
+                <CardTitle className="text-base">Role Switcher</CardTitle>
+                <CardDescription className="text-xs">
+                    (For Testing)
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+                <Select
+                    value={user.role}
+                    onValueChange={(value) => setUserRole(value as Role)}
+                >
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {roles.map((role) => (
+                            <SelectItem key={role} value={role} className="capitalize">
+                                {role}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </CardContent>
+        </Card>
+    );
+}
+
 function NavContent() {
   const { user } = useAuth();
   const pathname = usePathname();
@@ -104,6 +139,9 @@ function NavContent() {
               </Link>
           ))}
         </nav>
+      </div>
+      <div className="mt-auto">
+        <RoleSwitcher />
       </div>
     </div>
   );
