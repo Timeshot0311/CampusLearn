@@ -17,15 +17,17 @@ export type TutorGradebookEntry = {
     grade: string;
 }
 
-const gradesCollection = collection(db, 'grades');
-
 export async function getStudentGrades(studentId: string): Promise<Grade[]> {
+    if (!db) return [];
+    const gradesCollection = collection(db, 'grades');
     // In a real app, you would query for grades where studentId matches.
     const snapshot = await getDocs(gradesCollection);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Grade));
 }
 
 export async function getTutorGradebook(tutorId: string): Promise<TutorGradebookEntry[]> {
+    if (!db) return [];
+    const gradesCollection = collection(db, 'grades');
     // In a real app, you would query for grades in courses taught by the tutor.
     const snapshot = await getDocs(gradesCollection);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TutorGradebookEntry));

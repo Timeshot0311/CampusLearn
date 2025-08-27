@@ -19,11 +19,9 @@ export type Submission = {
     submission: string; // The actual content
 }
 
-const assignmentsCollection = collection(db, 'assignments');
-const submissionsCollection = collection(db, 'submissions');
-
-
 export async function getStudentAssignments(studentId: string): Promise<Assignment[]> {
+    if (!db) return [];
+    const assignmentsCollection = collection(db, 'assignments');
     // This is a simplified query. In a real app, you'd likely query based on courses the student is enrolled in.
     const snapshot = await getDocs(assignmentsCollection);
     // The status would also likely be stored per-student, not on the assignment itself.
@@ -32,6 +30,8 @@ export async function getStudentAssignments(studentId: string): Promise<Assignme
 
 
 export async function getTutorSubmissions(tutorId: string): Promise<Submission[]> {
+    if (!db) return [];
+    const submissionsCollection = collection(db, 'submissions');
      // This is a simplified query. In a real app, you'd query based on courses the tutor manages.
     const snapshot = await getDocs(submissionsCollection);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));

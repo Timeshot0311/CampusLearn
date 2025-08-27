@@ -14,14 +14,15 @@ export type Course = {
     modules: any[]; // Define a proper type for modules later
 };
 
-const coursesCollection = collection(db, 'courses');
-
 export async function getCourses(): Promise<Course[]> {
+    if (!db) return [];
+    const coursesCollection = collection(db, 'courses');
     const snapshot = await getDocs(coursesCollection);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course));
 }
 
 export async function getCourse(id: string): Promise<Course | null> {
+    if (!db) return null;
     const docRef = doc(db, 'users', id);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
@@ -31,16 +32,20 @@ export async function getCourse(id: string): Promise<Course | null> {
 }
 
 export async function addCourse(course: Omit<Course, 'id'>): Promise<string> {
+    if (!db) throw new Error("Firebase not initialized");
+    const coursesCollection = collection(db, 'courses');
     const docRef = await addDoc(coursesCollection, course);
     return docRef.id;
 }
 
 export async function updateCourse(id: string, course: Partial<Course>): Promise<void> {
+    if (!db) throw new Error("Firebase not initialized");
     const docRef = doc(db, 'courses', id);
     await updateDoc(docRef, course);
 }
 
 export async function deleteCourse(id: string): Promise<void> {
+    if (!db) throw new Error("Firebase not initialized");
     const docRef = doc(db, 'courses', id);
     await deleteDoc(docRef);
 }

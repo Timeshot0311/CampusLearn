@@ -30,14 +30,15 @@ export type Topic = {
   materials: LearningMaterial[];
 };
 
-const topicsCollection = collection(db, 'topics');
-
 export async function getTopics(): Promise<Topic[]> {
+    if (!db) return [];
+    const topicsCollection = collection(db, 'topics');
     const snapshot = await getDocs(topicsCollection);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Topic));
 }
 
 export async function getTopic(id: string): Promise<Topic | null> {
+    if (!db) return null;
     const docRef = doc(db, 'topics', id);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
@@ -47,16 +48,20 @@ export async function getTopic(id: string): Promise<Topic | null> {
 }
 
 export async function addTopic(topic: Omit<Topic, 'id'>): Promise<string> {
+    if (!db) throw new Error("Firebase not initialized");
+    const topicsCollection = collection(db, 'topics');
     const docRef = await addDoc(topicsCollection, topic);
     return docRef.id;
 }
 
 export async function updateTopic(id: string, topic: Partial<Topic>): Promise<void> {
+    if (!db) throw new Error("Firebase not initialized");
     const docRef = doc(db, 'topics', id);
     await updateDoc(docRef, topic);
 }
 
 export async function addReply(topicId: string, reply: TopicReply): Promise<void> {
+    if (!db) throw new Error("Firebase not initialized");
     const topic = await getTopic(topicId);
     if (topic) {
         const updatedReplies = [...(topic.replies || []), reply];
@@ -65,6 +70,7 @@ export async function addReply(topicId: string, reply: TopicReply): Promise<void
 }
 
 export async function addMaterial(topicId: string, file: File): Promise<LearningMaterial> {
+    if (!db || !storage) throw new Error("Firebase not initialized");
     const topic = await getTopic(topicId);
     if (!topic) throw new Error("Topic not found");
 
