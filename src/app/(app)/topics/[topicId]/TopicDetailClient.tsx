@@ -20,7 +20,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from "@/components/ui/input";
 
 
-const topicsData: Record<string, any> = {
+const initialTopicsData: Record<string, any> = {
   "1": {
     id: "1",
     title: "Confused about Quantum Tunneling",
@@ -28,7 +28,7 @@ const topicsData: Record<string, any> = {
     course: "Quantum Computing",
     author: "Alex Doe",
     authorAvatar: "https://i.pravatar.cc/150?u=alex",
-    status: "Open" as TopicStatus,
+    status: "Open",
     replies: [
       {
         author: "Dr. Evelyn Reed",
@@ -57,7 +57,7 @@ const topicsData: Record<string, any> = {
     course: "Organic Chemistry",
     author: "Charlie Brown",
     authorAvatar: "https://i.pravatar.cc/150?u=charlie",
-    status: "Open" as TopicStatus,
+    status: "Open",
     replies: [],
     materials: []
   },
@@ -68,7 +68,7 @@ const topicsData: Record<string, any> = {
     course: "Ancient Philosophy",
     author: "Bob Williams",
     authorAvatar: "https://i.pravatar.cc/150?u=bob",
-    status: "Closed" as TopicStatus,
+    status: "Closed",
     replies: [
         {
             author: "Dr. Samuel Green",
@@ -89,16 +89,19 @@ function getTopicFromStorage(topicId: string) {
     const storedTopics = localStorage.getItem('topics');
     if (storedTopics) {
         const topics = JSON.parse(storedTopics);
-        const initialTopic = topicsData[topicId as keyof typeof topicsData] || null;
-        return topics.find((t: any) => t.id === topicId) || initialTopic;
+        return topics.find((t: any) => t.id === topicId) || null;
     }
-    return topicsData[topicId as keyof typeof topicsData] || null;
+    const initialTopic = initialTopicsData[topicId as keyof typeof initialTopicsData] || null;
+    if (initialTopic) {
+        localStorage.setItem("topics", JSON.stringify(Object.values(initialTopicsData)))
+    }
+    return initialTopic;
 }
 
 function updateTopicInStorage(topic: any) {
     if (typeof window === 'undefined') return;
     const storedTopics = localStorage.getItem('topics');
-    let allTopics = storedTopics ? JSON.parse(storedTopics) : Object.values(topicsData);
+    let allTopics = storedTopics ? JSON.parse(storedTopics) : Object.values(initialTopicsData);
 
     const index = allTopics.findIndex((t: any) => t.id === topic.id);
     if (index !== -1) {
