@@ -1,11 +1,105 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // By default, deny all reads and writes
-    match /{document=**} {
-      allow read, write: if false;
+
+    // Helper functions
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isOwner(resourceId) {
+      return request.auth.uid == resourceId;
+    }
+    
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/Users/$(userId)).data.role;
+    }
+    
+    function isStudent(userId) {
+        return getUserRole(userId) == 'student';
+    }
+
+    function isTutorOrLecturer(userId) {
+      let role = getUserRole(userId);
+      return role == 'tutor' || role == 'lecturer';
+    }
+
+    function isAdmin(userId) {
+      return getUserRole(userId) == 'admin';
+    }
+
+    // Collections
+    match /Users/{userId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && isOwner(userId);
+      allow update: if isAuth() && (isOwner(userId) || isAdmin(request.auth.uid));
+      allow delete: if isAuth() && isAdmin(request.auth.uid);
+    }
+
+    match /Courses/{courseId} {
+      allow read: if isAuth() && (resource.data.published == true || isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
+      allow create: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
+      allow update, delete: if isAuth() && (resource.data.ownerId == request.auth.uid || isAdmin(request.auth.uid));
+    }
+
+    match /Topics/{topicId} {
+      allow read, create: if isAuth();
+      allow update: if isAuth() && (resource.data.createdBy == request.auth.uid || isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
+      allow delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
+    }
+
+    match /LearningMaterials/{materialId} {
+      allow read: if isAuth();
+      allow create, update, delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
+    }
+
+    match /Assignments/{assignmentId} {
+        allow read: if isAuth();
+        allow create, update, delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
+    }
+
+    match /Submissions/{submissionId} {
+      allow read: if isAuth() && (isOwner(resource.data.studentId) || isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
+      allow create: if isAuth() && isStudent(request.auth.uid);
+      allow update: if isAuth() && isOwner(resource.data.studentId);
+      allow delete: if isAuth() && isAdmin(request.auth.uid);
+    }
+
+    match /Quizzes/{quizId} {
+      allow read: if isAuth();
+      allow create, update, delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
+    }
+
+    match /Attempts/{attemptId} {
+       allow read: if isAuth() && (isOwner(resource.data.studentId) || isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
+       allow create: if isAuth() && isStudent(request.auth.uid);
+       allow update, delete: never; // Attempts should be immutable
+    }
+
+    match /Grades/{gradeId} {
+      allow read: if isAuth(); // Students should be able to read their grades
+      allow create, update: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
+      allow delete: if isAuth() && isAdmin(request.auth.uid);
+    }
+
+    match /Discussions/{discussionId} {
+      allow read, write: if isAuth();
+    }
+    
+    match /Announcements/{announcementId} {
+      allow read: if isAuth();
+      allow create, update, delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
+    }
+    
+    match /Notifications/{notifId} {
+        allow read, update: if isAuth() && isOwner(resource.data.userId);
+        allow create, delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
+    }
+
+    match /AuditLogs/{logId} {
+      allow read: if isAuth() && isAdmin(request.auth.uid);
+      allow create, update, delete: never; // Logs should be immutable and created server-side
     }
   }
 }

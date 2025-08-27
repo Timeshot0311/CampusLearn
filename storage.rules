@@ -1,9 +1,34 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // By default, deny all reads and writes
+    
+    // Helper function to check if user is authenticated
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Avatars: Allow users to read/write their own avatar
+    match /avatars/{userId}/{fileName} {
+      allow read: if isAuth();
+      allow write: if isAuth() && request.auth.uid == userId;
+    }
+
+    // Assignment Submissions: Allow students to write to their own submission path.
+    // Tutors/Admins can read submissions.
+    match /submissions/{assignmentId}/{studentId}/{fileName} {
+      allow read: if isAuth() && (get(/databases/$(database)/documents/Users/$(request.auth.uid)).data.role in ['tutor', 'lecturer', 'admin']);
+      allow write: if isAuth() && request.auth.uid == studentId;
+    }
+    
+    // Learning Materials: Allow tutors/lecturers/admins to upload learning materials.
+    // Allow any authenticated user to read them.
+    match /materials/{courseId}/{fileName} {
+        allow read: if isAuth();
+        allow write: if isAuth() && (get(/databases/$(database)/documents/Users/$(request.auth.uid)).data.role in ['tutor', 'lecturer', 'admin']);
+    }
+
+    // Deny all other routes
     match /{allPaths=**} {
       allow read, write: if false;
     }
