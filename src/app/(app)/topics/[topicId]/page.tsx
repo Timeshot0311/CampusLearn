@@ -16,10 +16,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Paperclip, FileText, Video, Music, Send } from "lucide-react";
+import { Paperclip, FileText, Video, Music, Send, MoreVertical, Download } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-const topicData = {
+
+const initialTopicData = {
   id: "1",
   title: "Confused about Quantum Tunneling",
   description: "Can someone explain the probability calculation for a particle to tunnel through a barrier? I'm not getting it. Specifically, I'm stuck on how the wave function decays inside the barrier and what the transmission coefficient represents. An example calculation would be amazing!",
@@ -44,11 +47,13 @@ const topicData = {
     }
   ],
   materials: [
-    { name: "Tunneling_Example.pdf", type: "pdf", icon: FileText },
-    { name: "Intro_to_Tunneling.mp4", type: "video", icon: Video },
-    { name: "Quantum_Wave_Function_Audio_Explanation.mp3", type: "audio", icon: Music },
+    { name: "Tunneling_Example.pdf", type: "pdf" },
+    { name: "Intro_to_Tunneling.mp4", type: "video" },
+    { name: "Quantum_Wave_Function_Audio_Explanation.mp3", type: "audio" },
   ]
 };
+
+type TopicStatus = "Open" | "Closed" | "Reopened";
 
 function MaterialIcon({ type }: { type: string }) {
     if (type === 'pdf') return <FileText className="h-5 w-5 text-muted-foreground" />;
@@ -59,8 +64,59 @@ function MaterialIcon({ type }: { type: string }) {
 
 export default function TopicDetailPage({ params }: { params: { topicId: string } }) {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [topicData, setTopicData] = useState(initialTopicData);
   const [newReply, setNewReply] = useState("");
   const isTutorOrLecturer = user.role === "tutor" || user.role === "lecturer";
+
+  const handleSendReply = () => {
+    if (!newReply.trim()) return;
+
+    const reply = {
+        author: user.name,
+        authorAvatar: user.avatar,
+        role: user.role,
+        text: newReply,
+        timestamp: "Just now",
+    };
+
+    setTopicData(prevData => ({
+        ...prevData,
+        replies: [...prevData.replies, reply],
+    }));
+
+    setNewReply("");
+    toast({ title: "Reply posted!" });
+  }
+
+  const handleDownload = (materialName: string) => {
+    toast({ title: "Downloading...", description: `${materialName} will be downloaded.` });
+  }
+
+  const handleStatusChange = (status: TopicStatus) => {
+    setTopicData(prevData => ({ ...prevData, status }));
+    toast({ title: "Topic Status Updated", description: `The topic has been marked as ${status}.`});
+  }
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Simulate file upload
+      const newMaterial = {
+        name: file.name,
+        type: file.type.split('/')[0] || 'file' // pdf, video, audio etc.
+      };
+      setTopicData(prevData => ({
+        ...prevData,
+        materials: [...prevData.materials, newMaterial]
+      }));
+      toast({
+        title: "File Uploaded!",
+        description: `${file.name} has been added to the learning materials.`
+      });
+    }
+  };
+
 
   return (
     <div className="grid md:grid-cols-3 gap-6">
@@ -73,7 +129,23 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
                 <CardTitle className="mt-2 text-3xl font-headline">{topicData.title}</CardTitle>
                 <CardDescription className="mt-2">{topicData.description}</CardDescription>
               </div>
-              <Badge variant={topicData.status === 'Open' ? 'default' : 'secondary'}>{topicData.status}</Badge>
+               <div className="flex items-center gap-2">
+                 <Badge variant={topicData.status === 'Open' ? 'default' : topicData.status === 'Reopened' ? 'secondary' : 'destructive'} className="capitalize">{topicData.status}</Badge>
+                {isTutorOrLecturer && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleStatusChange("Open")}>Mark as Open</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleStatusChange("Closed")}>Mark as Closed</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleStatusChange("Reopened")}>Mark as Reopened</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+               </div>
             </div>
              <div className="flex items-center gap-2 text-sm text-muted-foreground pt-4">
                 <Avatar className="h-8 w-8">
@@ -114,7 +186,7 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
                     rows={4}
                     className="pr-24"
                 />
-                <Button className="absolute bottom-3 right-3" size="sm">
+                <Button className="absolute bottom-3 right-3" size="sm" onClick={handleSendReply} disabled={!newReply.trim()}>
                     Send <Send className="ml-2 h-4 w-4"/>
                 </Button>
              </div>
@@ -126,16 +198,18 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
         <Card>
           <CardHeader>
             <CardTitle className="font-headline">Learning Materials</CardTitle>
-            <CardDescription>Resources uploaded by tutors for this topic.</CardDescription>
+            <CardDescription>Resources uploaded for this topic.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2">
              {topicData.materials.map(material => (
-                <div key={material.name} className="flex items-center p-2 rounded-md border hover:bg-muted/50 justify-between">
-                    <div className="flex items-center gap-3">
+                <div key={material.name} className="flex items-center p-3 rounded-md border justify-between">
+                    <div className="flex items-center gap-3 truncate">
                         <MaterialIcon type={material.type} />
-                        <span className="text-sm font-medium">{material.name}</span>
+                        <span className="text-sm font-medium truncate">{material.name}</span>
                     </div>
-                    <Button variant="ghost" size="sm">Download</Button>
+                    <Button variant="ghost" size="icon" className="flex-shrink-0" onClick={() => handleDownload(material.name)}>
+                        <Download className="h-4 w-4"/>
+                    </Button>
                 </div>
              ))}
              {isTutorOrLecturer && (
@@ -146,7 +220,7 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
                             <span>Upload New Material</span>
                         </div>
                     </Label>
-                    <Input id="file-upload" type="file" className="hidden" />
+                    <Input id="file-upload" type="file" className="hidden" onChange={handleFileUpload} />
                 </div>
              )}
           </CardContent>

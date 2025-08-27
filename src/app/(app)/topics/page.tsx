@@ -29,6 +29,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { PlusCircle, MessageSquare } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+
+type TopicStatus = "Open" | "Closed" | "Reopened";
 
 type Topic = {
   id: string;
@@ -38,7 +41,7 @@ type Topic = {
   author: string;
   authorAvatar: string;
   replies: number;
-  status: "Open" | "Closed";
+  status: TopicStatus;
 };
 
 const initialTopics: Topic[] = [
@@ -137,7 +140,7 @@ export default function TopicsPage() {
               <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2">
                 <Avatar className="h-6 w-6">
                     <AvatarImage src={topic.authorAvatar} alt={topic.author} />
-                    <AvatarFallback>{topic.author.charAt(0)}</AvatarFallback>
+                    <Fallback>{topic.author.charAt(0)}</Fallback>
                 </Avatar>
                 <span>{topic.author}</span>
               </div>
@@ -150,7 +153,12 @@ export default function TopicsPage() {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <MessageSquare className="h-4 w-4"/>
                     <span>{topic.replies} Replies</span>
-                    <Badge variant={topic.status === 'Open' ? 'default' : 'secondary'}>{topic.status}</Badge>
+                    <Badge 
+                      variant={topic.status === 'Open' ? 'default' : topic.status === 'Reopened' ? 'secondary' : 'destructive'} 
+                      className={cn("capitalize", isStudent && "pointer-events-none")}
+                    >
+                      {topic.status}
+                    </Badge>
                 </div>
               <Button size="sm" asChild>
                 <Link href={`/topics/${topic.id}`}>View Topic</Link>
@@ -162,3 +170,5 @@ export default function TopicsPage() {
     </div>
   );
 }
+
+const Fallback = AvatarFallback;
