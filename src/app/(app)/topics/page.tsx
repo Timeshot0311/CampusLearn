@@ -47,7 +47,7 @@ type Topic = {
 };
 
 const initialTopics: Topic[] = [
-  { id: "1", title: "Confused about Quantum Tunneling", description: "Can someone explain the probability calculation for a particle to tunnel through a barrier? I'm not getting it.", course: "Quantum Computing", author: "Alex Doe", authorAvatar: "https://i.pravatar.cc/150?u=alex", replies: [{author: "Dr. Evelyn Reed"}, {author: "Alex Doe"}], status: "Open", materials: [{}] },
+  { id: "1", title: "Confused about Quantum Tunneling", description: "Can someone explain the probability calculation for a particle to tunnel through a barrier? I'm not getting it.", course: "Quantum Computing", author: "Alex Doe", authorAvatar: "https://i.pravatar.cc/150?u=alex", replies: [{author: "Dr. Evelyn Reed"}, {author: "Alex Doe"}], status: "Open", materials: [] },
   { id: "2", title: "Help with SN1 vs. SN2 Reactions", description: "What are the key factors to decide if a reaction is SN1 or SN2? The solvent effects are particularly tricky for me.", course: "Organic Chemistry", author: "Charlie Brown", authorAvatar: "https://i.pravatar.cc/150?u=charlie", replies: [], status: "Open", materials: [] },
   { id: "3", title: "Aristotle's Four Causes", description: "I've read the chapter, but I'm looking for more examples of the material, formal, efficient, and final causes. The textbook is a bit dry.", course: "Ancient Philosophy", author: "Bob Williams", authorAvatar: "https://i.pravatar.cc/150?u=bob", replies: [{author: "Dr. Samuel Green"}], status: "Closed", materials: [] },
 ];
