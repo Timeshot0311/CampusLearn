@@ -1,6 +1,7 @@
 
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export type Lesson = {
     id: string;
@@ -8,6 +9,7 @@ export type Lesson = {
     type: 'article' | 'video' | 'quiz' | 'pdf' | 'youtube';
     content: string; // For article: markdown; for others: URL
     duration?: string; // Optional
+    completed: boolean;
 };
 
 export type Module = {
@@ -63,4 +65,12 @@ export async function deleteCourse(id: string): Promise<void> {
     if (!db) throw new Error("Firebase not initialized");
     const docRef = doc(db, 'courses', id);
     await deleteDoc(docRef);
+}
+
+export async function uploadCourseFile(courseId: string, file: File): Promise<string> {
+    if (!storage) throw new Error("Firebase Storage not initialized");
+    const storageRef = ref(storage, `courses/${courseId}/lessons/${file.name}`);
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+    return downloadURL;
 }

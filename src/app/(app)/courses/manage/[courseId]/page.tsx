@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getCourse, updateCourse, Course, Module, Lesson } from "@/services/course-service";
+import { getCourse, updateCourse, Course, Module, Lesson, uploadCourseFile } from "@/services/course-service";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { PlusCircle, Trash2, GripVertical, FileText, Youtube } from "lucide-react";
+import { PlusCircle, Trash2, GripVertical, FileText, Youtube, Loader2, Upload } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 
 type NewLessonState = {
@@ -32,6 +32,7 @@ export default function CourseContentEditor() {
 
     const [course, setCourse] = useState<Course | null>(null);
     const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
     const [newModuleName, setNewModuleName] = useState("");
     const [newLesson, setNewLesson] = useState<NewLessonState | null>(null);
 
@@ -89,7 +90,8 @@ export default function CourseContentEditor() {
         const { moduleId, ...lessonData } = newLesson;
         const lessonToAdd: Lesson = {
             ...lessonData,
-            id: uuidv4()
+            id: uuidv4(),
+            completed: false // default value
         };
         
         const updatedModules = course.modules.map(m => {
@@ -106,6 +108,23 @@ export default function CourseContentEditor() {
             toast({ title: "Lesson Added!" });
         } catch (error) {
              toast({ title: "Error adding lesson", variant: "destructive" });
+        }
+    };
+    
+    const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || !newLesson) return;
+        const file = e.target.files[0];
+        if (file && courseId) {
+            setUploading(true);
+            try {
+                const downloadUrl = await uploadCourseFile(courseId, file);
+                setNewLesson({ ...newLesson, content: downloadUrl });
+                toast({ title: "PDF Uploaded", description: "The file URL has been added to the content field." });
+            } catch (error) {
+                toast({ title: "Upload Failed", variant: "destructive" });
+            } finally {
+                setUploading(false);
+            }
         }
     };
 
@@ -170,7 +189,7 @@ export default function CourseContentEditor() {
                                                 <Label>Content</Label>
                                                 {newLesson.type === 'article' && (
                                                     <Textarea 
-                                                        placeholder="Write your article content here. Markdown is supported." 
+                                                        placeholder="Write your article content here. Markdown is supported for headings, lists, bolding, etc." 
                                                         value={newLesson.content} 
                                                         onChange={e => setNewLesson({...newLesson, content: e.target.value})} 
                                                         rows={10}
@@ -184,11 +203,20 @@ export default function CourseContentEditor() {
                                                     />
                                                 )}
                                                 {newLesson.type === 'pdf' && (
-                                                     <Input 
-                                                        placeholder="https://example.com/path/to/document.pdf" 
-                                                        value={newLesson.content} 
-                                                        onChange={e => setNewLesson({...newLesson, content: e.target.value})}
-                                                    />
+                                                     <div className="flex items-center gap-2">
+                                                        <Input 
+                                                            placeholder="Upload a PDF file or paste a URL" 
+                                                            value={newLesson.content} 
+                                                            onChange={e => setNewLesson({...newLesson, content: e.target.value})}
+                                                            disabled={uploading}
+                                                        />
+                                                        <Button asChild variant="outline" size="icon">
+                                                            <label htmlFor="pdf-upload" className="cursor-pointer">
+                                                                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4"/>}
+                                                            </label>
+                                                        </Button>
+                                                        <Input id="pdf-upload" type="file" className="hidden" accept=".pdf" onChange={handlePdfUpload} disabled={uploading}/>
+                                                     </div>
                                                 )}
                                             </div>
                                             <div className="flex gap-2 justify-end">

@@ -5,8 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { PlayCircle, FileText, CheckCircle, ClipboardCheck, BookOpen, Youtube, File } from "lucide-react";
+import { PlayCircle, FileText, CheckCircle, BookOpen, Youtube, File } from "lucide-react";
 import { Lesson, Module } from "@/services/course-service";
+import { useState } from "react";
+import { ClipboardCheck } from "lucide-react";
 
 
 const courseData = {
