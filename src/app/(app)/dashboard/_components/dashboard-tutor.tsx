@@ -18,14 +18,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   BarChart,
@@ -36,12 +28,14 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { FileEdit, Lightbulb } from "lucide-react";
+import { FileEdit, Lightbulb, MessageSquare } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Submission, getTutorSubmissions } from "@/services/assignment-service";
-import { Grade } from "@/services/grade-service";
 import { FeedbackGeneratorDialog } from "@/components/feedback-generator-dialog";
+import { Topic, getTopics } from "@/services/topic-service";
+import Link from "next/link";
+import { useAuth } from "@/hooks/use-auth";
 
 const performanceData = [
   { name: 'Quiz 1', avgScore: 78 },
@@ -51,11 +45,84 @@ const performanceData = [
   { name: 'Final', avgScore: 88 },
 ];
 
+function StudentQuestionsCard() {
+    const { user } = useAuth();
+    const { toast } = useToast();
+    const [loading, setLoading] = useState(true);
+    const [topics, setTopics] = useState<Topic[]>([]);
+
+    useEffect(() => {
+        const fetchTopics = async () => {
+            setLoading(true);
+            try {
+                const allTopics = await getTopics();
+                // Filter topics relevant to the tutor/lecturer
+                const relevantTopics = allTopics.filter(topic =>
+                    user.assignedCourses?.includes(topic.course) && topic.status !== 'Closed'
+                );
+                setTopics(relevantTopics.sort((a,b) => (b.replies?.[b.replies.length-1]?.timestamp || 0) > (a.replies?.[a.replies.length-1]?.timestamp || 0) ? 1 : -1));
+            } catch (error) {
+                toast({ title: "Error fetching topics", variant: "destructive" });
+            } finally {
+                setLoading(false);
+            }
+        };
+        if (user.assignedCourses && user.assignedCourses.length > 0) {
+            fetchTopics();
+        } else {
+            setLoading(false);
+        }
+    }, [toast, user.assignedCourses]);
+
+
+    return (
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-headline">Recent Student Questions</CardTitle>
+            <CardDescription>
+              Open help topics from students in your courses.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+                <p>Loading questions...</p>
+            ) : topics.length > 0 ? (
+                <div className="space-y-4">
+                    {topics.slice(0, 5).map((topic) => (
+                        <div key={topic.id} className="flex items-start justify-between">
+                           <div className="flex items-start gap-4">
+                                <Avatar className="h-10 w-10 border">
+                                    <AvatarImage src={topic.authorAvatar} alt={topic.author} />
+                                    <AvatarFallback>{topic.author.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="font-medium text-sm">{topic.title}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        From {topic.author} in <span className="font-semibold">{topic.course}</span>
+                                    </p>
+                                </div>
+                           </div>
+                           <Button asChild size="sm" variant="outline">
+                               <Link href={`/topics/${topic.id}`}>View</Link>
+                           </Button>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center text-muted-foreground py-6">
+                    <MessageSquare className="mx-auto h-12 w-12" />
+                    <p className="mt-4">No open questions in your courses.</p>
+                </div>
+            )}
+          </CardContent>
+        </Card>
+    );
+}
+
 export function DashboardTutor() {
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [submissions, setSubmissions] = useState<Submission[]>([]);
-    const [grades, setGrades] = useState<Grade[]>([]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -97,50 +164,7 @@ export function DashboardTutor() {
                 </CardContent>
             </Card>
         </div>
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-headline">Recent Submissions</CardTitle>
-            <CardDescription>
-              Latest assignments submitted by your students.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Course</TableHead>
-                  <TableHead>Assignment</TableHead>
-                  <TableHead className="text-right">Submitted</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                    <TableRow><TableCell colSpan={4}>Loading submissions...</TableCell></TableRow>
-                ) : submissions.length > 0 ? (
-                    submissions.slice(0, 5).map((submission) => (
-                    <TableRow key={submission.id}>
-                        <TableCell>
-                        <div className="flex items-center gap-2">
-                            <Avatar className="h-8 w-8">
-                            <AvatarImage src={submission.avatar} alt={submission.student} />
-                            <AvatarFallback>{submission.student.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium">{submission.student}</span>
-                        </div>
-                        </TableCell>
-                        <TableCell>{submission.course}</TableCell>
-                        <TableCell>{submission.assignment}</TableCell>
-                        <TableCell className="text-right">{submission.submitted}</TableCell>
-                    </TableRow>
-                    ))
-                ) : (
-                    <TableRow><TableCell colSpan={4}>No recent submissions.</TableCell></TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <StudentQuestionsCard />
       </div>
 
       <div className="lg:col-span-1 flex flex-col gap-6">

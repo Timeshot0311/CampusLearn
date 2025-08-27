@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -51,7 +52,7 @@ const tutorNav = [
 const lecturerNav = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
   { href: "/courses", icon: BookOpen, label: "Course Management" },
-  { href: "/topics", icon: MessageSquarePlus, label: "Manage Topics" },
+  { href: "/topics", icon: MessageSquarePlus, label: "Help Topics" },
   { href: "/assignments", icon: ClipboardCheck, label: "Submissions" },
   { href: "/analytics", icon: LineChart, label: "Analytics" },
   { href: "/profile", icon: User, label: "Profile" },
@@ -61,6 +62,7 @@ const adminNav = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
   { href: "/users", icon: Users, label: "User Management" },
   { href: "/courses", icon: Package, label: "Course Management" },
+  { href: "/topics", icon: MessageSquarePlus, label: "Help Topics" },
   { href: "/analytics", icon: LineChart, label: "System Analytics" },
   { href: "/profile", icon: User, label: "Profile" },
 ];
@@ -131,7 +133,7 @@ function NavContent() {
                 href={item.href}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-                  (pathname === item.href || (item.href === "/courses" && pathname.startsWith("/courses/"))) && "bg-muted text-primary"
+                  (pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/')) && "bg-muted text-primary"
                 )}
               >
                 <item.icon className="h-4 w-4" />

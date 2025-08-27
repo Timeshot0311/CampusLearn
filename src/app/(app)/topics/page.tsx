@@ -102,7 +102,7 @@ export default function TopicsPage() {
     const fetchTopics = async () => {
         try {
             const fetchedTopics = await getTopics();
-            setTopics(fetchedTopics);
+            setTopics(fetchedTopics.sort((a,b) => (b.replies?.[b.replies.length-1]?.timestamp || 0) > (a.replies?.[a.replies.length-1]?.timestamp || 0) ? 1 : -1));
         } catch (error) {
             toast({ title: "Error fetching topics", variant: "destructive" });
         } finally {
