@@ -99,20 +99,16 @@ function getTopicFromStorage(topicId: string) {
 function updateTopicInStorage(topic: any) {
     if (typeof window === 'undefined') return;
     const storedTopics = localStorage.getItem('topics');
-    if (storedTopics) {
-        const topics = JSON.parse(storedTopics);
-        const index = topics.findIndex((t: any) => t.id === topic.id);
-        if (index !== -1) {
-            topics[index] = topic;
-        } else {
-            const initialIndex = Object.keys(topicsData).findIndex(id => id === topic.id);
-            if(initialIndex !== -1) {
-                topics.push(topic);
-            }
-        }
-        localStorage.setItem('topics', JSON.stringify(topics));
-        window.dispatchEvent(new Event('storage'));
+    let allTopics = storedTopics ? JSON.parse(storedTopics) : Object.values(topicsData);
+
+    const index = allTopics.findIndex((t: any) => t.id === topic.id);
+    if (index !== -1) {
+        allTopics[index] = topic;
+    } else {
+        allTopics.push(topic);
     }
+    localStorage.setItem('topics', JSON.stringify(allTopics));
+    window.dispatchEvent(new Event('storage'));
 }
 
 
@@ -230,7 +226,7 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
              <div className="flex items-center gap-2 text-sm text-muted-foreground pt-4">
                 <Avatar className="h-8 w-8">
                     <AvatarImage src={topicData.authorAvatar} alt={topicData.author} />
-                    <AvatarFallback>{topicData.author.charAt(0)}</AvatarFallback>
+                    <AvatarFallback>{topicData.author?.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <span>Created by {topicData.author}</span>
               </div>
@@ -243,7 +239,7 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
                 <div key={index} className="flex items-start gap-4">
                   <Avatar>
                     <AvatarImage src={reply.authorAvatar} alt={reply.author} />
-                    <AvatarFallback>{reply.author.charAt(0)}</AvatarFallback>
+                    <AvatarFallback>{reply.author?.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
                     <div className="flex justify-between items-center">
