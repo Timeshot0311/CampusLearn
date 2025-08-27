@@ -1,5 +1,19 @@
+
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+
+export type Lesson = {
+    title: string;
+    type: 'video' | 'reading' | 'quiz';
+    duration: string;
+    completed?: boolean; // This will be a per-student status, but for structure it's here
+};
+
+export type Module = {
+    id: string;
+    title: string;
+    lessons: Lesson[];
+};
 
 export type Course = {
     id: string;
@@ -11,7 +25,7 @@ export type Course = {
     dataAiHint: string;
     ownerId: string;
     published: boolean;
-    modules: any[]; // Define a proper type for modules later
+    modules: Module[]; 
 };
 
 export async function getCourses(): Promise<Course[]> {
@@ -23,7 +37,7 @@ export async function getCourses(): Promise<Course[]> {
 
 export async function getCourse(id: string): Promise<Course | null> {
     if (!db) return null;
-    const docRef = doc(db, 'users', id);
+    const docRef = doc(db, 'courses', id);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
         return { id: docSnap.id, ...docSnap.data() } as Course;

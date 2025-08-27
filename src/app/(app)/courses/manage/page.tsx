@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -38,6 +39,7 @@ import { useToast } from "@/hooks/use-toast";
 import { addCourse, deleteCourse, getCourses, updateCourse, Course } from "@/services/course-service";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 
 function CourseDialog({ onSave, course, children }: { onSave: (course: Omit<Course, 'id'>) => void; course?: Course | null; children: React.ReactNode }) {
@@ -258,9 +260,11 @@ export default function CourseManagementPage() {
                                 <DropdownMenuContent align="end">
                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                     <CourseDialog onSave={(courseData) => handleSaveCourse(courseData, course.id)} course={course}>
-                                        <button className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full">Edit</button>
+                                        <button className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full">Edit Details</button>
                                     </CourseDialog>
-                                    <DropdownMenuItem>View Details</DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link href={`/courses/manage/${course.id}`} className="w-full">Manage Content</Link>
+                                    </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DeleteCourseAlert courseId={course.id} onDelete={handleDeleteCourse} />
                                 </DropdownMenuContent>
