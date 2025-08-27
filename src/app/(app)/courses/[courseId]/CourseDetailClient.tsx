@@ -1,12 +1,13 @@
 
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { PlayCircle, FileText, CheckCircle, BookOpen, Youtube, File, ClipboardCheck, Trash2, PlusCircle, Loader2, Upload, Pencil, Users } from "lucide-react";
-import { Lesson, Module, Course, getCourse, updateCourse, uploadCourseFile } from "@/services/course-service";
+import { PlayCircle, FileText, CheckCircle, BookOpen, Youtube, File, ClipboardCheck, Trash2, PlusCircle, Loader2, Upload, Pencil, Users, Send } from "lucide-react";
+import { Course, Module, Lesson, updateCourse, uploadCourseFile, getCourse } from "@/services/course-service";
+import { Topic, addTopic } from "@/services/topic-service";
 import { useState, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -340,6 +341,65 @@ const CourseStaff = ({ course, allUsers }: { course: Course, allUsers: User[] })
     )
 }
 
+const AskQuestionCard = ({ course, user }: { course: Course, user: User }) => {
+    const [question, setQuestion] = useState("");
+    const [loading, setLoading] = useState(false);
+    const { toast } = useToast();
+
+    const handleAskQuestion = async () => {
+        if (!question.trim()) return;
+        setLoading(true);
+
+        const newTopicData: Omit<Topic, 'id'> = {
+            title: `Question about ${course.title}`,
+            description: question,
+            course: course.title,
+            author: user.name,
+            authorAvatar: user.avatar,
+            replies: [],
+            status: "Open",
+            materials: []
+        };
+        
+        try {
+            await addTopic(newTopicData);
+            toast({
+                title: "Question Submitted!",
+                description: "A new help topic has been created. A tutor or lecturer will respond soon."
+            });
+            setQuestion("");
+        } catch (error) {
+            toast({ title: "Error submitting question", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Ask a Question</CardTitle>
+                <CardDescription>Need help? Ask a tutor or lecturer a question about this course.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Textarea 
+                    placeholder="Type your question here..."
+                    value={question}
+                    onChange={e => setQuestion(e.target.value)}
+                    rows={4}
+                />
+            </CardContent>
+            <CardFooter>
+                 <Button onClick={handleAskQuestion} disabled={loading || !question.trim()} className="w-full">
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {loading ? "Submitting..." : "Submit Question"}
+                    {!loading && <Send className="ml-2 h-4 w-4" />}
+                </Button>
+            </CardFooter>
+        </Card>
+    );
+};
+
 
 export default function CourseDetailClient({ courseId }: { courseId: string }) {
   const { toast } = useToast();
@@ -353,6 +413,7 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
 
   const isLecturerOrAdmin = user?.role === 'lecturer' || user?.role === 'admin';
+  const isStudent = user?.role === 'student';
 
   useEffect(() => {
     const fetchCourseAndUsers = async () => {
@@ -482,10 +543,10 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
                                         <span>{module.title}</span>
                                     </AccordionTrigger>
                                     {editMode && isLecturerOrAdmin && (
-                                        <div className="flex items-center pl-2" onClick={(e) => e.stopPropagation()}>
+                                        <div className="flex items-center pl-2">
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
+                                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/90 hover:bg-destructive/10" onClick={(e) => e.stopPropagation()}><Trash2 className="h-4 w-4" /></Button>
                                                 </AlertDialogTrigger>
                                                 <AlertDialogContent>
                                                     <AlertDialogHeader>
@@ -570,6 +631,10 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
                         </div>
                     </CardContent>
                 </Card>
+            )}
+
+            {isStudent && (
+                 <AskQuestionCard course={course} user={user} />
             )}
         </div>
 
