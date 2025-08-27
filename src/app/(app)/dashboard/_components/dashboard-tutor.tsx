@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -17,7 +18,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   BarChart,
@@ -28,7 +37,15 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { FileEdit, Lightbulb } from "lucide-react";
+import { FileEdit, Lightbulb, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { generateQuiz } from "@/ai/flows/smart-quiz-generation";
+import { generateAssignmentFeedback } from "@/ai/flows/ai-powered-feedback-generator";
+import { Badge } from "@/components/ui/badge";
 
 const recentSubmissions = [
   {
@@ -37,6 +54,7 @@ const recentSubmissions = [
     course: "Quantum Computing",
     assignment: "Problem Set 3",
     submitted: "2 hours ago",
+    submission: "The student's submission text for Problem Set 3..."
   },
   {
     student: "Bob Williams",
@@ -44,6 +62,7 @@ const recentSubmissions = [
     course: "Organic Chemistry",
     assignment: "Lab Report 2",
     submitted: "5 hours ago",
+    submission: "The student's submission text for Lab Report 2..."
   },
   {
     student: "Charlie Brown",
@@ -51,6 +70,7 @@ const recentSubmissions = [
     course: "Ancient Philosophy",
     assignment: "Essay on Stoicism",
     submitted: "1 day ago",
+    submission: "The student's submission text for the Essay on Stoicism..."
   },
 ];
 
@@ -61,6 +81,172 @@ const performanceData = [
   { name: 'P. Set 3', avgScore: 91 },
   { name: 'Final', avgScore: 88 },
 ];
+
+
+function QuizGeneratorDialog() {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [material, setMaterial] = useState("");
+  const [numQuestions, setNumQuestions] = useState(5);
+  const [quizJson, setQuizJson] = useState("");
+
+  const handleGenerate = async () => {
+    setLoading(true);
+    setQuizJson("");
+    try {
+      const result = await generateQuiz({
+        learningMaterial: material,
+        numberOfQuestions: numQuestions,
+      });
+      setQuizJson(result.quiz);
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Error Generating Quiz",
+        description: "There was an issue creating the quiz. Please try again.",
+        variant: "destructive",
+      });
+    }
+    setLoading(false);
+  };
+  
+  return (
+     <Dialog>
+      <DialogTrigger asChild>
+        <Button className="w-full">Create Quiz</Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Smart Quiz Generation</DialogTitle>
+          <DialogDescription>
+            Paste in any learning material (e.g., lecture notes, article) to automatically generate a practice quiz.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="material">Learning Material</Label>
+            <Textarea 
+                id="material" 
+                placeholder="Paste your content here..." 
+                rows={10} 
+                value={material}
+                onChange={(e) => setMaterial(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="num-questions">Number of Questions</Label>
+            <Input 
+                id="num-questions" 
+                type="number" 
+                value={numQuestions}
+                onChange={(e) => setNumQuestions(Number(e.target.value))}
+                className="w-24"
+            />
+          </div>
+          {quizJson && (
+             <div className="grid gap-2">
+              <Label>Generated Quiz (JSON)</Label>
+              <Textarea readOnly value={quizJson} rows={10} className="font-mono text-xs" />
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button onClick={handleGenerate} disabled={loading || !material}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {loading ? "Generating..." : "Generate Quiz"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function FeedbackGeneratorDialog() {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const [studentName, setStudentName] = useState("");
+  const [courseName, setCourseName] = useState("");
+  const [assignmentDescription, setAssignmentDescription] = useState("");
+  const [studentSubmission, setStudentSubmission] = useState("");
+  const [tutorFeedbackGuidelines, setTutorFeedbackGuidelines] = useState("");
+
+  const handleGenerate = async () => {
+    setLoading(true);
+    setFeedback("");
+    try {
+      const result = await generateAssignmentFeedback({
+        studentName,
+        courseName,
+        assignmentDescription,
+        studentSubmission,
+        tutorFeedbackGuidelines,
+      });
+      setFeedback(result.feedback);
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Error Generating Feedback",
+        description: "There was an issue drafting the feedback. Please try again.",
+        variant: "destructive",
+      });
+    }
+    setLoading(false);
+  };
+  
+  return (
+     <Dialog>
+      <DialogTrigger asChild>
+        <Button className="w-full">Generate Feedback</Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>AI-Powered Feedback Generator</DialogTitle>
+          <DialogDescription>
+            Fill in the details to generate personalized feedback for a student's assignment.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="student-name">Student Name</Label>
+                    <Input id="student-name" value={studentName} onChange={(e) => setStudentName(e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="course-name">Course Name</Label>
+                    <Input id="course-name" value={courseName} onChange={(e) => setCourseName(e.target.value)} />
+                </div>
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor="assignment-desc">Assignment Description</Label>
+                <Textarea id="assignment-desc" value={assignmentDescription} onChange={(e) => setAssignmentDescription(e.target.value)} />
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor="student-submission">Student's Submission</Label>
+                <Textarea id="student-submission" value={studentSubmission} onChange={(e) => setStudentSubmission(e.target.value)} />
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor="tutor-guidelines">Tutor Guidelines (Optional)</Label>
+                <Textarea id="tutor-guidelines" placeholder="e.g., 'Focus on argument structure and use of evidence.'" value={tutorFeedbackGuidelines} onChange={(e) => setTutorFeedbackGuidelines(e.target.value)} />
+            </div>
+         
+          {feedback && (
+             <div className="grid gap-2">
+              <Label>Generated Feedback</Label>
+              <Textarea readOnly value={feedback} rows={8} />
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button onClick={handleGenerate} disabled={loading || !studentSubmission}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {loading ? "Generating..." : "Generate Feedback"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 export function DashboardTutor() {
   return (
@@ -139,7 +325,7 @@ export function DashboardTutor() {
                 <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
                 <YAxis fontSize={12} tickLine={false} axisLine={false} />
                 <Tooltip />
-                <Bar dataKey="avgScore" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="avgScore" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -155,7 +341,7 @@ export function DashboardTutor() {
             </CardDescription>
           </CardHeader>
           <CardFooter>
-            <Button className="w-full">Create Quiz</Button>
+            <QuizGeneratorDialog />
           </CardFooter>
         </Card>
          <Card>
@@ -169,7 +355,7 @@ export function DashboardTutor() {
             </CardDescription>
           </CardHeader>
           <CardFooter>
-            <Button className="w-full">Generate Feedback</Button>
+            <FeedbackGeneratorDialog />
           </CardFooter>
         </Card>
       </div>

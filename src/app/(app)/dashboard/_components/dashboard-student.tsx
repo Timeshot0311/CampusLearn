@@ -23,8 +23,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Bot } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useEffect, useState } from "react";
+import { aiTutoringAssistant } from "@/ai/flows/ai-tutoring-assistant";
+import { getLearningRecommendations } from "@/ai/flows/learning-recommendations";
+import { useToast } from "@/hooks/use-toast";
 
 const courses = [
   {
@@ -107,6 +110,63 @@ function CourseCard({ course }: { course: (typeof courses)[0] }) {
 
 
 export function DashboardStudent() {
+  const { toast } = useToast();
+  const [tutorQuestion, setTutorQuestion] = useState("");
+  const [tutorHistory, setTutorHistory] = useState<{ type: 'user' | 'ai'; text: string }[]>([
+      { type: 'ai', text: "Hello! How can I help you with your studies today?" }
+  ]);
+  const [tutorLoading, setTutorLoading] = useState(false);
+
+  const [recommendations, setRecommendations] = useState([
+    "Module 5: Quantum Algorithms",
+    "Review Quiz: Superposition",
+    "Supplemental Reading: The Fabric of the Cosmos"
+  ]);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+
+  const handleAskTutor = async () => {
+    if (!tutorQuestion.trim()) return;
+    setTutorLoading(true);
+    setTutorHistory(prev => [...prev, { type: 'user', text: tutorQuestion }]);
+    try {
+      const result = await aiTutoringAssistant({
+        question: tutorQuestion,
+        courseMaterials: "Vast knowledge of all course materials." // Using dummy data
+      });
+      setTutorHistory(prev => [...prev, { type: 'ai', text: result.answer }]);
+      setTutorQuestion("");
+    } catch (error) {
+      toast({
+        title: "Error Getting Answer",
+        description: "There was an error getting an answer from the AI tutor. Please try again.",
+        variant: "destructive",
+      });
+    }
+    setTutorLoading(false);
+  };
+  
+  const handleGetRecommendations = async () => {
+    setRecommendationsLoading(true);
+    try {
+        const result = await getLearningRecommendations({
+            studentId: "123",
+            courseId: "CS101",
+            pastProgress: "Completed Module 1-4 with an average score of 85%. Struggled with Quantum Superposition concepts in Quiz 2.",
+            courseObjectives: "Understand the fundamentals of Quantum Computing, including superposition, entanglement, and basic quantum algorithms.",
+            modules: "Module 1: Intro to QC, Module 2: Superposition, Module 3: Entanglement, Module 4: Quantum Gates, Module 5: Quantum Algorithms, Module 6: Quantum Hardware."
+        });
+        setRecommendations([result.reasoning, ...result.recommendedModules]);
+    } catch (error) {
+        toast({
+            title: "Error Getting Recommendations",
+            description: "There was an error fetching new recommendations. Please try again.",
+            variant: "destructive",
+        });
+    }
+    setRecommendationsLoading(false);
+  };
+
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div className="lg:col-span-2 flex flex-col gap-6">
@@ -163,19 +223,41 @@ export function DashboardStudent() {
             </CardHeader>
             <CardContent className="flex-grow flex flex-col gap-4">
                 <div className="flex-grow space-y-4 overflow-y-auto p-4 bg-muted/50 rounded-lg">
-                    <div className="flex items-start gap-3">
-                        <Avatar className="h-8 w-8 border">
-                            <AvatarFallback>AI</AvatarFallback>
-                        </Avatar>
-                        <div className="bg-background p-3 rounded-lg max-w-[85%]">
-                            <p className="text-sm">Hello! How can I help you with your studies today?</p>
+                    {tutorHistory.map((message, index) => (
+                        <div key={index} className={`flex items-start gap-3 ${message.type === 'user' ? 'justify-end' : ''}`}>
+                            {message.type === 'ai' && (
+                                <Avatar className="h-8 w-8 border">
+                                    <AvatarFallback>AI</AvatarFallback>
+                                </Avatar>
+                            )}
+                            <div className={`p-3 rounded-lg max-w-[85%] ${message.type === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background'}`}>
+                                <p className="text-sm">{message.text}</p>
+                            </div>
+                            {message.type === 'user' && (
+                                <Avatar className="h-8 w-8 border">
+                                    <AvatarFallback>You</AvatarFallback>
+                                </Avatar>
+                            )}
                         </div>
-                    </div>
+                    ))}
                 </div>
-                 <Textarea placeholder="Type your question here..." className="min-h-[80px]" />
+                 <Textarea 
+                    placeholder="Type your question here..." 
+                    className="min-h-[80px]" 
+                    value={tutorQuestion}
+                    onChange={(e) => setTutorQuestion(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleAskTutor();
+                        }
+                    }}
+                 />
             </CardContent>
             <CardFooter>
-                <Button className="w-full">Ask AI</Button>
+                <Button className="w-full" onClick={handleAskTutor} disabled={tutorLoading}>
+                    {tutorLoading ? "Thinking..." : "Ask AI"}
+                </Button>
             </CardFooter>
         </Card>
         <Card>
@@ -186,18 +268,15 @@ export function DashboardStudent() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Based on your progress in Quantum Computing, we suggest focusing on these areas next:
-            </p>
             <ul className="space-y-2 list-disc pl-5 text-sm">
-                <li>Module 5: Quantum Algorithms</li>
-                <li>Review Quiz: Superposition</li>
-                <li>Supplemental Reading: The Fabric of the Cosmos</li>
+                {recommendations.map((rec, index) => (
+                    <li key={index}>{rec}</li>
+                ))}
             </ul>
           </CardContent>
           <CardFooter>
-            <Button variant="outline" className="w-full">
-              Get New Recommendations
+            <Button variant="outline" className="w-full" onClick={handleGetRecommendations} disabled={recommendationsLoading}>
+              {recommendationsLoading ? "Generating..." : "Get New Recommendations"}
             </Button>
           </CardFooter>
         </Card>

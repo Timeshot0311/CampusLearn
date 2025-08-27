@@ -7,6 +7,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { generateAssignmentFeedback } from "@/ai/flows/ai-powered-feedback-generator";
 
 const studentAssignments = [
   { name: "Quantum Entanglement Essay", course: "Quantum Computing", dueDate: "2024-08-15", status: "Submitted" },
@@ -16,12 +30,76 @@ const studentAssignments = [
 ];
 
 const tutorSubmissions = [
-  { student: "Alice Johnson", avatar: "https://i.pravatar.cc/150?u=alice", course: "Quantum Computing", assignment: "Problem Set 3", submitted: "2 hours ago" },
-  { student: "Bob Williams", avatar: "https://i.pravatar.cc/150?u=bob", course: "Organic Chemistry", assignment: "Lab Report 2", submitted: "5 hours ago" },
-  { student: "Charlie Brown", avatar: "https://i.pravatar.cc/150?u=charlie", course: "Ancient Philosophy", assignment: "Essay on Stoicism", submitted: "1 day ago" },
-  { student: "Diana Prince", avatar: "https://i.pravatar.cc/150?u=diana", course: "Quantum Computing", assignment: "Problem Set 3", submitted: "2 days ago" },
-  { student: "Ethan Hunt", avatar: "https://i.pravatar.cc/150?u=ethan", course: "Organic Chemistry", assignment: "Lab Report 2", submitted: "3 days ago" },
+  { student: "Alice Johnson", avatar: "https://i.pravatar.cc/150?u=alice", course: "Quantum Computing", assignment: "Problem Set 3", submitted: "2 hours ago", submission: "The student's submission text for Problem Set 3..." },
+  { student: "Bob Williams", avatar: "https://i.pravatar.cc/150?u=bob", course: "Organic Chemistry", assignment: "Lab Report 2", submitted: "5 hours ago", submission: "The student's submission text for Lab Report 2..." },
+  { student: "Charlie Brown", avatar: "https://i.pravatar.cc/150?u=charlie", course: "Ancient Philosophy", assignment: "Essay on Stoicism", submitted: "1 day ago", submission: "The student's submission text for the Essay on Stoicism..." },
+  { student: "Diana Prince", avatar: "https://i.pravatar.cc/150?u=diana", course: "Quantum Computing", assignment: "Problem Set 3", submitted: "2 days ago", submission: "Another student's submission text for Problem Set 3..." },
+  { student: "Ethan Hunt", avatar: "https://i.pravatar.cc/150?u=ethan", course: "Organic Chemistry", assignment: "Lab Report 2", submitted: "3 days ago", submission: "Another student's submission text for Lab Report 2..." },
 ];
+
+function GradeDialog({ submission }: { submission: (typeof tutorSubmissions)[0] }) {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const [guidelines, setGuidelines] = useState("");
+
+  const handleGenerateFeedback = async () => {
+    setLoading(true);
+    try {
+      const result = await generateAssignmentFeedback({
+        studentName: submission.student,
+        assignmentDescription: submission.assignment,
+        studentSubmission: submission.submission,
+        tutorFeedbackGuidelines: guidelines,
+        courseName: submission.course,
+      });
+      setFeedback(result.feedback);
+    } catch (error) {
+      toast({
+        title: "Error Generating Feedback",
+        description: "There was an error generating feedback. Please try again.",
+        variant: "destructive",
+      });
+    }
+    setLoading(false);
+  };
+  
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button size="sm">Grade</Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Grade Assignment: {submission.assignment}</DialogTitle>
+          <DialogDescription>Student: {submission.student} | Course: {submission.course}</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+            <p className="text-sm text-muted-foreground"><strong>Submission:</strong> {submission.submission}</p>
+          <div className="grid gap-2">
+            <Label htmlFor="guidelines">Feedback Guidelines (Optional)</Label>
+            <Textarea 
+                id="guidelines" 
+                placeholder="e.g., Focus on their understanding of the core concepts." 
+                value={guidelines}
+                onChange={(e) => setGuidelines(e.target.value)}
+            />
+          </div>
+          <Button onClick={handleGenerateFeedback} disabled={loading} className="w-fit">
+            {loading ? "Generating..." : "Generate AI Feedback"}
+          </Button>
+          <div className="grid gap-2">
+            <Label htmlFor="feedback">Feedback</Label>
+            <Textarea id="feedback" value={feedback} onChange={e => setFeedback(e.target.value)} rows={8} placeholder="Generated feedback will appear here."/>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="submit">Submit Grade</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 function StudentAssignments() {
   return (
@@ -95,7 +173,7 @@ function TutorSubmissions() {
                             <TableCell>{submission.assignment}</TableCell>
                             <TableCell>{submission.submitted}</TableCell>
                             <TableCell className="text-right">
-                                <Button size="sm">Grade</Button>
+                                <GradeDialog submission={submission} />
                             </TableCell>
                         </TableRow>
                         ))}
