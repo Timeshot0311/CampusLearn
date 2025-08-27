@@ -38,6 +38,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -74,7 +80,7 @@ function UserDialog({ onSave, user, courses, children }: { onSave: (user: User, 
         role,
         status: user?.status || "Active",
         avatar: user?.avatar || `https://i.pravatar.cc/150?u=${name.split(' ')[0]}`,
-        assignedCourses: role === 'tutor' ? assignedCourses : []
+        assignedCourses: role === 'tutor' || role === 'lecturer' ? assignedCourses : []
     };
 
     onSave(userData, isEditing ? undefined : password);
@@ -133,7 +139,7 @@ function UserDialog({ onSave, user, courses, children }: { onSave: (user: User, 
               </SelectContent>
             </Select>
           </div>
-           {role === 'tutor' && (
+           {(role === 'tutor' || role === 'lecturer') && (
              <div className="grid grid-cols-4 items-start gap-4">
               <Label htmlFor="courses" className="text-right pt-2">Courses</Label>
               <MultiSelect
@@ -206,6 +212,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
@@ -309,14 +316,25 @@ export default function UsersPage() {
                             <Badge variant={user.status === 'Active' ? 'default' : 'destructive'}>{user.status}</Badge>
                         </TableCell>
                         <TableCell>
-                           {user.role === 'tutor' && user.assignedCourses && user.assignedCourses.length > 0 ? (
-                                <div className="flex flex-wrap gap-1">
+                           {(user.role === 'tutor' || user.role === 'lecturer') && user.assignedCourses && user.assignedCourses.length > 0 ? (
+                                <div className="flex flex-wrap gap-1 max-w-xs">
                                     {user.assignedCourses.map(courseId => {
                                         const course = courses.find(c => c.id === courseId);
-                                        return <Badge key={courseId} variant="secondary">{course?.title || 'Unknown Course'}</Badge>
+                                        return (
+                                            <TooltipProvider key={courseId} delayDuration={100}>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Badge variant="secondary" className="truncate">{course?.title || 'Unknown Course'}</Badge>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>{course?.title || 'Unknown Course'}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        )
                                     })}
                                 </div>
-                            ) : user.role === 'tutor' ? 'None' : 'N/A'}
+                            ) : (user.role === 'tutor' || user.role === 'lecturer') ? 'None' : 'N/A'}
                         </TableCell>
                         <TableCell className="text-right">
                             <DropdownMenu>

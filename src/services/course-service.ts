@@ -16,8 +16,6 @@ export type Module = {
     id: string;
     title: string;
     lessons: Lesson[];
-    assignedLecturers?: string[];
-    assignedTutors?: string[];
 };
 
 export type Course = {
@@ -31,6 +29,8 @@ export type Course = {
     ownerId: string;
     published: boolean;
     modules: Module[];
+    assignedLecturers?: string[];
+    assignedTutors?: string[];
 };
 
 export async function getCourses(): Promise<Course[]> {

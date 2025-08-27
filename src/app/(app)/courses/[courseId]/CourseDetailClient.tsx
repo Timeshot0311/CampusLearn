@@ -231,7 +231,7 @@ const EditLessonDialog = ({ courseId, moduleId, onLessonSaved, lesson, children 
     )
 };
 
-const AssignStaffDialog = ({ course, module, onStaffAssigned, children }: { course: Course, module: Module, onStaffAssigned: (modules: Module[]) => void, children: React.ReactNode}) => {
+const AssignStaffDialog = ({ course, onStaffAssigned, children }: { course: Course, onStaffAssigned: (course: Course) => void, children: React.ReactNode}) => {
     const { user } = useAuth();
     const { toast } = useToast();
     const [open, setOpen] = useState(false);
@@ -253,23 +253,17 @@ const AssignStaffDialog = ({ course, module, onStaffAssigned, children }: { cour
         };
         if (open) {
             fetchUsers();
-            setAssignedLecturers(module.assignedLecturers || []);
-            setAssignedTutors(module.assignedTutors || []);
+            setAssignedLecturers(course.assignedLecturers || []);
+            setAssignedTutors(course.assignedTutors || []);
         }
-    }, [open, module]);
+    }, [open, course]);
 
     const handleSave = async () => {
-        const updatedModules = course.modules.map(m => {
-            if (m.id === module.id) {
-                return { ...m, assignedLecturers, assignedTutors };
-            }
-            return m;
-        });
-
+        const updatedCourseData = { assignedLecturers, assignedTutors };
         try {
-            await updateCourse(course.id, { modules: updatedModules });
+            await updateCourse(course.id, updatedCourseData);
             toast({ title: "Staff Assigned!" });
-            onStaffAssigned(updatedModules);
+            onStaffAssigned({ ...course, ...updatedCourseData });
             setOpen(false);
         } catch (error) {
             toast({ title: "Error assigning staff", variant: "destructive" });
@@ -281,8 +275,8 @@ const AssignStaffDialog = ({ course, module, onStaffAssigned, children }: { cour
             <DialogTrigger asChild>{children}</DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Assign Staff to "{module.title}"</DialogTitle>
-                    <DialogDescription>Select the lecturers and tutors responsible for this module.</DialogDescription>
+                    <DialogTitle>Assign Staff to "{course.title}"</DialogTitle>
+                    <DialogDescription>Select the lecturers and tutors responsible for this course.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="grid gap-2">
@@ -303,6 +297,7 @@ const AssignStaffDialog = ({ course, module, onStaffAssigned, children }: { cour
                             selected={assignedTutors}
                             onChange={setAssignedTutors}
                             placeholder="Assign tutors..."
+                            disabled={!isAdmin && !isLecturer}
                         />
                     </div>
                 </div>
@@ -315,27 +310,31 @@ const AssignStaffDialog = ({ course, module, onStaffAssigned, children }: { cour
     )
 }
 
-const ModuleStaff = ({ module, allUsers }: { module: Module, allUsers: User[] }) => {
+const CourseStaff = ({ course, allUsers }: { course: Course, allUsers: User[] }) => {
     const staff = [
-        ...(module.assignedLecturers?.map(id => allUsers.find(u => u.id === id)) || []),
-        ...(module.assignedTutors?.map(id => allUsers.find(u => u.id === id)) || [])
+        ...(course.assignedLecturers?.map(id => allUsers.find(u => u.id === id)) || []),
+        ...(course.assignedTutors?.map(id => allUsers.find(u => u.id === id)) || [])
     ].filter((u): u is User => !!u);
 
-    if (staff.length === 0) return null;
+    if (staff.length === 0) return <p className="text-sm text-muted-foreground">No staff assigned.</p>;
 
     return (
-        <div className="flex items-center space-x-2 mt-2">
-            {staff.slice(0, 4).map(user => (
-                <Avatar key={user.id} className="h-6 w-6 border-2 border-background">
-                    <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                </Avatar>
+         <div className="flex items-center -space-x-2">
+            {staff.map(user => (
+                <TooltipProvider key={user.id}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Avatar className="h-8 w-8 border-2 border-background">
+                                <AvatarImage src={user.avatar} alt={user.name} />
+                                <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                            </Avatar>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>{user.name} <span className="text-muted-foreground capitalize">({user.role})</span></p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             ))}
-             {staff.length > 4 && (
-                <div className="flex items-center justify-center h-6 w-6 rounded-full bg-muted text-xs font-semibold">
-                    +{staff.length - 4}
-                </div>
-            )}
         </div>
     )
 }
@@ -410,6 +409,7 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
      });
      try {
         await updateCourse(course.id, { modules: updatedModules });
+        if(activeLesson?.id === lessonId) setActiveLesson(null);
         setCourse({ ...course, modules: updatedModules });
         toast({ title: "Lesson Deleted!" });
     } catch (error) {
@@ -417,10 +417,15 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
     }
   }
   
-  const onDataSaved = (updatedModules: Module[]) => {
+  const onModuleDataSaved = (updatedModules: Module[]) => {
     if (!course) return;
     setCourse({ ...course, modules: updatedModules });
     setAddingLessonToModule(null);
+  }
+
+   const onCourseDataSaved = (updatedCourse: Course) => {
+    if (!course) return;
+    setCourse(updatedCourse);
   }
 
   if (loading) {
@@ -446,16 +451,26 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
         <div className="lg:col-span-1 flex flex-col gap-6">
             <Card>
                 <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <CardTitle className="font-headline">{course.title}</CardTitle>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <CardTitle className="font-headline">{course.title}</CardTitle>
+                            <CardDescription>{course.description}</CardDescription>
+                        </div>
                          {isLecturerOrAdmin && (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-shrink-0">
                                 <Label htmlFor="edit-mode" className="text-sm">Edit</Label>
                                 <Switch id="edit-mode" checked={editMode} onCheckedChange={setEditMode} />
                             </div>
                         )}
                     </div>
-                     <CardDescription>{course.description}</CardDescription>
+                     <div className="flex justify-between items-center pt-4">
+                        <CourseStaff course={course} allUsers={allUsers} />
+                        {editMode && isLecturerOrAdmin && (
+                            <AssignStaffDialog course={course} onStaffAssigned={onCourseDataSaved}>
+                                <Button variant="outline" size="sm"><Users className="mr-2 h-4 w-4"/>Assign Staff</Button>
+                            </AssignStaffDialog>
+                        )}
+                    </div>
                 </CardHeader>
                 <CardContent>
                      <Accordion type="single" collapsible className="w-full" defaultValue={course.modules.length > 0 ? course.modules[0].id : undefined}>
@@ -463,17 +478,11 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
                             <AccordionItem value={module.id} key={module.id}>
                                 <AccordionTrigger className="text-lg font-semibold hover:no-underline">
                                     <div className="flex items-center justify-between w-full pr-2">
-                                        <div className="flex-col items-start">
-                                            <span>{module.title}</span>
-                                            <ModuleStaff module={module} allUsers={allUsers} />
-                                        </div>
-                                        {editMode && (
-                                            <div className="flex items-center">
-                                            <AssignStaffDialog course={course} module={module} onStaffAssigned={onDataSaved}>
-                                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary/90 hover:bg-primary/10" onClick={(e) => e.stopPropagation()}><Users className="h-4 w-4" /></Button>
-                                            </AssignStaffDialog>
+                                        <span>{module.title}</span>
+                                        {editMode && isLecturerOrAdmin && (
+                                            <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
                                             <AlertDialog>
-                                                <AlertDialogTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                <AlertDialogTrigger asChild>
                                                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
                                                 </AlertDialogTrigger>
                                                 <AlertDialogContent>
@@ -501,13 +510,13 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <CheckCircle className={`h-5 w-5 ${lesson.completed ? 'text-green-500' : 'text-muted-foreground/30'}`} />
-                                                    {editMode && (
-                                                        <div className="flex items-center opacity-0 group-hover:opacity-100">
-                                                            <EditLessonDialog courseId={course.id} moduleId={module.id} onLessonSaved={onDataSaved} lesson={lesson}>
+                                                    {editMode && isLecturerOrAdmin && (
+                                                        <div className="flex items-center opacity-0 group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
+                                                            <EditLessonDialog courseId={course.id} moduleId={module.id} onLessonSaved={onModuleDataSaved} lesson={lesson}>
                                                                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary/90 hover:bg-primary/10"><Pencil className="h-4 w-4" /></Button>
                                                             </EditLessonDialog>
                                                             <AlertDialog>
-                                                                <AlertDialogTrigger asChild onClick={(e) => { e.stopPropagation(); }}>
+                                                                <AlertDialogTrigger asChild>
                                                                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
                                                                 </AlertDialogTrigger>
                                                                 <AlertDialogContent>
@@ -528,9 +537,9 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
                                         ))}
                                         {module.lessons.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">No lessons in this module yet.</p>}
                                     </ul>
-                                    {editMode && (
+                                    {editMode && isLecturerOrAdmin && (
                                         addingLessonToModule === module.id ? (
-                                            <LessonForm courseId={course.id} moduleId={module.id} onLessonSaved={onDataSaved} onCancel={() => setAddingLessonToModule(null)} />
+                                            <LessonForm courseId={course.id} moduleId={module.id} onLessonSaved={onModuleDataSaved} onCancel={() => setAddingLessonToModule(null)} />
                                         ) : (
                                             <div className="p-2 border-t mt-2">
                                                 <Button variant="link" onClick={() => setAddingLessonToModule(module.id)}>
@@ -546,7 +555,7 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
                 </CardContent>
             </Card>
 
-            {editMode && (
+            {editMode && isLecturerOrAdmin && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-base">Add New Module</CardTitle>
