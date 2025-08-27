@@ -2,6 +2,7 @@
 import { auth, db } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import type { Course } from './course-service';
 
 export type Role = "student" | "tutor" | "lecturer" | "admin";
 
@@ -67,3 +68,16 @@ export async function deleteUser(id: string): Promise<void> {
     const docRef = doc(db, 'users', id);
     await deleteDoc(docRef);
 }
+
+export function getUserCourses(user: User, courses: Course[]): string[] {
+    if (user.role === 'tutor' || user.role === 'lecturer') {
+        return user.assignedCourses || [];
+    }
+    if (user.role === 'student') {
+        return courses
+            .filter(course => course.enrolledStudents?.includes(user.id))
+            .map(course => course.id);
+    }
+    return [];
+};
+

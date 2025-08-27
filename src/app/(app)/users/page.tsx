@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,25 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,128 +29,10 @@ import {
 
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { addUser, deleteUser, getUsers, updateUser, User } from "@/services/user-service";
+import { addUser, deleteUser, getUsers, updateUser, User, getUserCourses } from "@/services/user-service";
 import { getCourses, Course } from "@/services/course-service";
-import { MultiSelect } from "@/components/ui/multi-select";
 import { EnrollStudentDialog } from "@/components/enroll-student-dialog";
-
-function UserDialog({ onSave, user, courses, children }: { onSave: (user: User, password?: string) => void; user?: User; courses: Course[], children: React.ReactNode }) {
-  const [name, setName] = useState(user?.name || "");
-  const [email, setEmail] = useState(user?.email || "");
-  const [role, setRole] = useState<User['role']>(user?.role || "student");
-  const [password, setPassword] = useState("");
-  const [assignedCourses, setAssignedCourses] = useState<string[]>(user?.assignedCourses || []);
-  const [open, setOpen] = useState(false);
-  const { toast } = useToast();
-
-  const isEditing = !!user;
-  const courseOptions = courses.map(c => ({ value: c.id, label: c.title }));
-
-  const handleSave = () => {
-    if (!name || !email) {
-        toast({ title: "Validation Error", description: "Name and email are required.", variant: "destructive"});
-        return;
-    }
-    if (!isEditing && !password) {
-        toast({ title: "Validation Error", description: "Password is required for new users.", variant: "destructive"});
-        return;
-    }
-
-    const userData: User = {
-        id: user?.id || '',
-        name,
-        email,
-        role,
-        status: user?.status || "Active",
-        avatar: user?.avatar || `https://i.pravatar.cc/150?u=${name.split(' ')[0]}`,
-        assignedCourses: role === 'tutor' || role === 'lecturer' ? assignedCourses : []
-    };
-
-    onSave(userData, isEditing ? undefined : password);
-    setOpen(false);
-  };
-  
-  useEffect(() => {
-    if (open) {
-      if (user) {
-        setName(user.name);
-        setEmail(user.email);
-        setRole(user.role);
-        setAssignedCourses(user.assignedCourses || []);
-        setPassword("");
-      } else {
-          setName("");
-          setEmail("");
-          setRole("student");
-          setAssignedCourses([]);
-          setPassword("");
-      }
-    }
-  }, [user, open]);
-
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>{user ? "Edit User" : "Add New User"}</DialogTitle>
-          <DialogDescription>
-            {user ? "Update the details for this user account." : "Enter the details for the new user account."}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">Name</Label>
-            <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="John Smith" className="col-span-3" />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="email" className="text-right">Email</Label>
-            <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="john.s@campus.edu" className="col-span-3" />
-          </div>
-           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="role" className="text-right">Role</Label>
-             <Select value={role} onValueChange={(value: User['role']) => setRole(value)}>
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select a role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="student">Student</SelectItem>
-                <SelectItem value="tutor">Tutor</SelectItem>
-                <SelectItem value="lecturer">Lecturer</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-           {(role === 'tutor' || role === 'lecturer') && (
-             <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="courses" className="text-right pt-2">Courses</Label>
-              <MultiSelect
-                className="col-span-3"
-                options={courseOptions}
-                selected={assignedCourses}
-                onChange={setAssignedCourses}
-                placeholder="Assign courses..."
-              />
-            </div>
-           )}
-          {!isEditing && (
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="password" className="text-right">Password</Label>
-              <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Set initial password" className="col-span-3" />
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-            <DialogClose asChild>
-                <Button variant="outline">Cancel</Button>
-            </DialogClose>
-          <Button onClick={handleSave}>Save Changes</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
+import { UserDialog } from "@/components/user-dialog";
 
 function DeleteUserAlert({ userId, onDelete }: { userId: string, onDelete: (id: string) => void }) {
     return (
@@ -215,17 +79,7 @@ export default function UsersPage() {
     fetchData();
   }, [fetchData]);
 
-
-  const handleSaveUser = async (user: User, password?: string) => {
-    const isEditing = !!user.id;
-    if (isEditing) {
-        await handleUpdateUser(user);
-    } else {
-        await handleAddUser(user, password!);
-    }
-  };
-
-  const handleAddUser = async (user: User, password: string) => {
+  const handleAddUser = async (user: Omit<User, 'id'>, password: string) => {
     try {
         const newUserId = await addUser(user, password);
         setUsers([...users, {...user, id: newUserId}]);
@@ -267,23 +121,11 @@ export default function UsersPage() {
     }
   };
 
-  const getUserCourses = (user: User) => {
-    if (user.role === 'tutor' || user.role === 'lecturer') {
-        return user.assignedCourses || [];
-    }
-    if (user.role === 'student') {
-        return courses
-            .filter(course => course.enrolledStudents?.includes(user.id))
-            .map(course => course.id);
-    }
-    return [];
-  };
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold font-headline">User Management</h1>
-        <UserDialog onSave={handleSaveUser} courses={courses}>
+        <UserDialog onAdd={handleAddUser} courses={courses}>
              <Button>Add User</Button>
         </UserDialog>
       </div>
@@ -308,7 +150,7 @@ export default function UsersPage() {
                     </TableHeader>
                     <TableBody>
                     {users.map((user) => {
-                       const userCourses = getUserCourses(user);
+                       const userCourses = getUserCourses(user, courses);
                        return (
                         <TableRow key={user.id}>
                             <TableCell>
@@ -360,7 +202,7 @@ export default function UsersPage() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                    <UserDialog onSave={handleSaveUser} user={user} courses={courses}>
+                                    <UserDialog onUpdate={handleUpdateUser} user={user} courses={courses}>
                                         <button className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full">Edit</button>
                                     </UserDialog>
                                     {user.role === 'student' && (
