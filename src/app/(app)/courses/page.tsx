@@ -30,7 +30,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Users } from "lucide-react";
+import { MessageSquarePlus, PlusCircle, Users } from "lucide-react";
+import { CreateTopicDialog } from "@/components/create-topic-dialog";
+import { Topic } from "@/services/topic-service";
 
 
 function CourseDialog({ onSave }: { onSave: (course: Omit<Course, 'id' | 'modules' | 'progress' | 'published'>) => void; }) {
@@ -102,7 +104,10 @@ function CourseDialog({ onSave }: { onSave: (course: Omit<Course, 'id' | 'module
 }
 
 
-function CourseCard({ course }: { course: Course }) {
+function CourseCard({ course, onTopicCreated }: { course: Course; onTopicCreated: (newTopic: Topic) => void; }) {
+  const { user } = useAuth();
+  const isTutorOrLecturer = user.role === 'tutor' || user.role === 'lecturer';
+
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col">
       <CardHeader className="p-0">
@@ -127,12 +132,23 @@ function CourseCard({ course }: { course: Course }) {
         <Progress value={course.progress} className="mt-4" />
         <p className="text-xs text-muted-foreground mt-1">{course.progress}% complete</p>
       </CardContent>
-      <CardFooter className="p-4 pt-0">
+      <CardFooter className="p-4 pt-0 flex gap-2">
         <Button size="sm" className="w-full" asChild>
             <Link href={`/courses/${course.id}`}>
               {course.progress > 0 ? "Continue Learning" : "Start Course"}
             </Link>
         </Button>
+        {isTutorOrLecturer && (
+          <CreateTopicDialog
+            courses={[course]}
+            defaultCourseId={course.id}
+            onTopicCreated={onTopicCreated}
+          >
+             <Button size="sm" variant="outline">
+                <MessageSquarePlus className="h-4 w-4" />
+             </Button>
+          </CreateTopicDialog>
+        )}
       </CardFooter>
     </Card>
   );
@@ -179,6 +195,11 @@ export default function CoursesPage() {
         toast({ title: "Error creating course", description: error.message, variant: "destructive" });
     }
   };
+  
+  const handleTopicCreated = (newTopic: Topic) => {
+    // This is mainly to update UI if needed on this page, though topics page is separate
+    toast({ title: "Topic Created!", description: `"${newTopic.title}" has been posted.` });
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -203,7 +224,7 @@ export default function CoursesPage() {
             ))
         ) : (
             courses.map((course) => (
-                <CourseCard key={course.id} course={course} />
+                <CourseCard key={course.id} course={course} onTopicCreated={handleTopicCreated}/>
             ))
         )}
       </div>

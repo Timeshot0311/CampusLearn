@@ -10,20 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -32,110 +20,54 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { Topic, addTopic, getTopics } from "@/services/topic-service";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCourses, Course } from "@/services/course-service";
+import { CreateTopicDialog } from "@/components/create-topic-dialog";
 
-
-function CreateTopicDialog({ onSave }: { onSave: (topic: Omit<Topic, 'id'| 'author'| 'authorAvatar'|'replies'|'status'|'materials'>) => void }) {
-    const [open, setOpen] = useState(false);
-    const [title, setTitle] = useState("");
-    const [description, setDescription] = useState("");
-    const [course, setCourse] = useState("");
-    const { toast } = useToast();
-
-    const handleSave = () => {
-        if (!title || !description || !course) {
-            toast({ title: "Missing Fields", description: "Please fill out all fields to create a topic.", variant: "destructive" });
-            return;
-        }
-        onSave({ title, description, course });
-        setOpen(false);
-        setTitle("");
-        setDescription("");
-        setCourse("");
-    };
-
-    return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Create New Topic
-                </Button>
-            </DialogTrigger>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Create a New Help Topic</DialogTitle>
-                    <DialogDescription>
-                        Describe the subject you need help with. A tutor or lecturer will respond soon.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor="title">Topic Title</Label>
-                        <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., 'Help with Photosynthesis'" />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="course">Related Course</Label>
-                        <Input id="course" value={course} onChange={(e) => setCourse(e.target.value)} placeholder="e.g., 'Biology 101'" />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="description">Description</Label>
-                        <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe your question in detail..." rows={5} />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-                    <Button onClick={handleSave}>Create Topic</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
 
 export default function TopicsPage() {
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
   const canCreateTopic = user.role === "student" || user.role === "tutor" || user.role === "lecturer";
 
   useEffect(() => {
-    const fetchTopics = async () => {
+    const fetchTopicsAndCourses = async () => {
         try {
-            const fetchedTopics = await getTopics();
+            const [fetchedTopics, fetchedCourses] = await Promise.all([
+              getTopics(),
+              getCourses()
+            ]);
             setTopics(fetchedTopics.sort((a,b) => (b.replies?.[b.replies.length-1]?.timestamp || 0) > (a.replies?.[a.replies.length-1]?.timestamp || 0) ? 1 : -1));
+            setCourses(fetchedCourses);
         } catch (error) {
-            toast({ title: "Error fetching topics", variant: "destructive" });
+            toast({ title: "Error fetching page data", variant: "destructive" });
         } finally {
             setLoading(false);
         }
     };
-    fetchTopics();
+    fetchTopicsAndCourses();
   }, [toast]);
 
 
-  const handleCreateTopic = async (newTopicData: Omit<Topic, 'id' | 'author' | 'authorAvatar' | 'replies' | 'status' | 'materials'>) => {
-    try {
-        const topicToAdd: Omit<Topic, 'id'> = {
-            ...newTopicData,
-            author: user.name,
-            authorAvatar: user.avatar,
-            replies: [],
-            status: "Open",
-            materials: []
-        };
-        const newTopicId = await addTopic(topicToAdd);
-        setTopics([{ ...topicToAdd, id: newTopicId }, ...topics]);
-        toast({ title: "Topic Created!", description: "Your new topic has been posted." });
-    } catch (error) {
-        toast({ title: "Error creating topic", variant: "destructive" });
-    }
+  const handleTopicCreated = (newTopic: Topic) => {
+    setTopics([{ ...newTopic }, ...topics]);
+    toast({ title: "Topic Created!", description: "Your new topic has been posted." });
   };
   
   return (
     <div className="flex flex-col gap-6">
        <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold font-headline">Help Topics</h1>
-            {canCreateTopic && <CreateTopicDialog onSave={handleCreateTopic} />}
+            {canCreateTopic && (
+              <CreateTopicDialog courses={courses} onTopicCreated={handleTopicCreated}>
+                <Button>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Create New Topic
+                </Button>
+              </CreateTopicDialog>
+            )}
        </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
