@@ -39,46 +39,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-import { useState, useReducer } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { Role } from "@/hooks/use-auth";
-
-type User = {
-    id: string;
-    name: string;
-    email: string;
-    role: Role;
-    status: "Active" | "Inactive";
-    avatar: string;
-};
-
-const initialUsers: User[] = [
-    { id: "1", name: "Alex Doe", email: "alex.doe@campus.edu", role: "student", status: "Active", avatar: "https://i.pravatar.cc/150?u=alex" },
-    { id: "2", name: "Dr. Evelyn Reed", email: "e.reed@campus.edu", role: "tutor", status: "Active", avatar: "https://i.pravatar.cc/150?u=evelyn" },
-    { id: "6", name: "Dr. Samuel Green", email: "s.green@campus.edu", role: "lecturer", status: "Active", avatar: "https://i.pravatar.cc/150?u=samuel" },
-    { id: "3", name: "Sam Wallace", email: "s.wallace@campus.edu", role: "admin", status: "Active", avatar: "https://i.pravatar.cc/150?u=sam" },
-    { id: "4", name: "Bob Williams", email: "bob.w@campus.edu", role: "student", status: "Inactive", avatar: "https://i.pravatar.cc/150?u=bob" },
-    { id: "5", name: "Charlie Brown", email: "charlie.b@campus.edu", role: "student", status: "Active", avatar: "https://i.pravatar.cc/150?u=charlie" },
-];
-
-type Action = 
-    | { type: 'ADD_USER'; payload: User }
-    | { type: 'UPDATE_USER'; payload: User }
-    | { type: 'DELETE_USER'; payload: string };
-
-function usersReducer(state: User[], action: Action): User[] {
-    switch (action.type) {
-        case 'ADD_USER':
-            return [...state, action.payload];
-        case 'UPDATE_USER':
-            return state.map(user => user.id === action.payload.id ? action.payload : user);
-        case 'DELETE_USER':
-            return state.filter(user => user.id !== action.payload);
-        default:
-            return state;
-    }
-}
-
+import { addUser, deleteUser, getUsers, updateUser, User } from "@/services/user-service";
 
 function UserDialog({ onSave, user, children }: { onSave: (user: User) => void; user?: User; children: React.ReactNode }) {
   const [name, setName] = useState(user?.name || "");
@@ -92,17 +56,32 @@ function UserDialog({ onSave, user, children }: { onSave: (user: User) => void; 
         toast({ title: "Validation Error", description: "Name and email are required.", variant: "destructive"});
         return;
     }
-    onSave({
-        id: user?.id || Date.now().toString(),
+    const userData: User = {
+        id: user?.id || '',
         name,
         email,
         role,
         status: user?.status || "Active",
         avatar: user?.avatar || `https://i.pravatar.cc/150?u=${name.split(' ')[0]}`
-    });
+    };
+
+    onSave(userData);
     setOpen(false);
     toast({ title: `User ${user ? 'updated' : 'added'} successfully!`});
   };
+  
+  useEffect(() => {
+    if (user) {
+      setName(user.name);
+      setEmail(user.email);
+      setRole(user.role);
+    } else {
+        setName("");
+        setEmail("");
+        setRole("student");
+    }
+  }, [user, open]);
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -153,7 +132,7 @@ function DeleteUserAlert({ userId, onDelete }: { userId: string, onDelete: (id: 
     return (
         <AlertDialog>
             <AlertDialogTrigger asChild>
-                <button className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full text-destructive">Delete</button>
+                <button className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full text-destructive focus:text-destructive">Delete</button>
             </AlertDialogTrigger>
             <AlertDialogContent>
                 <AlertDialogHeader>
@@ -172,25 +151,64 @@ function DeleteUserAlert({ userId, onDelete }: { userId: string, onDelete: (id: 
 }
 
 export default function UsersPage() {
-  const [users, dispatch] = useReducer(usersReducer, initialUsers);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  
+  const fetchUsers = async () => {
+    try {
+        const userList = await getUsers();
+        setUsers(userList);
+    } catch(error) {
+        toast({ title: "Error fetching users", description: "Could not load user data from the database.", variant: "destructive" });
+    } finally {
+        setLoading(false);
+    }
+  }
 
-  const handleAddUser = (user: User) => {
-    dispatch({ type: 'ADD_USER', payload: user });
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+
+  const handleAddUser = async (user: User) => {
+    try {
+        const newUserId = await addUser(user);
+        setUsers([...users, {...user, id: newUserId}]);
+    } catch (error) {
+        toast({ title: "Error adding user", variant: "destructive" });
+    }
   };
 
-  const handleUpdateUser = (user: User) => {
-    dispatch({ type: 'UPDATE_USER', payload: user });
+  const handleUpdateUser = async (user: User) => {
+    try {
+        await updateUser(user.id, user);
+        setUsers(users.map(u => u.id === user.id ? user : u));
+    } catch (error) {
+        toast({ title: "Error updating user", variant: "destructive" });
+    }
   };
 
-  const handleDeleteUser = (id: string) => {
-    dispatch({ type: 'DELETE_USER', payload: id });
-    toast({ title: "User deleted successfully." });
+  const handleDeleteUser = async (id: string) => {
+    try {
+        await deleteUser(id);
+        setUsers(users.filter(u => u.id !== id));
+        toast({ title: "User deleted successfully." });
+    } catch (error) {
+        toast({ title: "Error deleting user", variant: "destructive" });
+    }
   };
   
-  const handleSuspendUser = (user: User) => {
-    dispatch({ type: 'UPDATE_USER', payload: {...user, status: user.status === "Active" ? "Inactive" : "Active"} });
-    toast({ title: `User has been ${user.status === "Active" ? "suspended" : "reactivated"}.` });
+  const handleSuspendUser = async (user: User) => {
+    const newStatus = user.status === "Active" ? "Inactive" : "Active";
+    const updatedUser = {...user, status: newStatus };
+    try {
+        await updateUser(user.id, updatedUser);
+        setUsers(users.map(u => u.id === user.id ? updatedUser : u));
+        toast({ title: `User has been ${newStatus === 'Inactive' ? "suspended" : "reactivated"}.` });
+    } catch (error) {
+        toast({ title: "Error updating user status", variant: "destructive" });
+    }
   };
 
   return (
@@ -207,65 +225,65 @@ export default function UsersPage() {
           <CardDescription>Manage all user accounts on the platform.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage src={user.avatar} />
-                          <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                            <p className="font-medium">{user.name}</p>
-                            <p className="text-sm text-muted-foreground">{user.email}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="capitalize">{user.role}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={user.status === 'Active' ? 'default' : 'destructive'}>{user.status}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem asChild>
-                                <UserDialog onSave={handleUpdateUser} user={user}>
-                                    <button className="w-full text-left">Edit</button>
-                                </UserDialog>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleSuspendUser(user)}>
-                                {user.status === 'Active' ? 'Suspend' : 'Reactivate'}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem asChild>
-                                <DeleteUserAlert userId={user.id} onDelete={handleDeleteUser} />
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+            {loading ? (
+                <p>Loading users...</p>
+            ) : (
+                <Table>
+                    <TableHeader>
+                    <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                    {users.map((user) => (
+                        <TableRow key={user.id}>
+                            <TableCell>
+                            <div className="flex items-center gap-3">
+                                <Avatar>
+                                <AvatarImage src={user.avatar} />
+                                <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="font-medium">{user.name}</p>
+                                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                                </div>
+                            </div>
+                            </TableCell>
+                        <TableCell>
+                            <Badge variant="outline" className="capitalize">{user.role}</Badge>
+                        </TableCell>
+                        <TableCell>
+                            <Badge variant={user.status === 'Active' ? 'default' : 'destructive'}>{user.status}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <span className="sr-only">Open menu</span>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                    <UserDialog onSave={handleUpdateUser} user={user}>
+                                        <button className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full">Edit</button>
+                                    </UserDialog>
+                                    <DropdownMenuItem onClick={() => handleSuspendUser(user)}>
+                                        {user.status === 'Active' ? 'Suspend' : 'Reactivate'}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DeleteUserAlert userId={user.id} onDelete={handleDeleteUser} />
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TableCell>
+                        </TableRow>
+                    ))}
+                    </TableBody>
+                </Table>
+            )}
         </CardContent>
       </Card>
     </div>
