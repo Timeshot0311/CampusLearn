@@ -45,7 +45,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { addUser, deleteUser, getUsers, updateUser, User } from "@/services/user-service";
 import { getCourses, Course } from "@/services/course-service";
@@ -198,7 +198,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
         const [userList, courseList] = await Promise.all([getUsers(), getCourses()]);
@@ -209,12 +209,11 @@ export default function UsersPage() {
     } finally {
         setLoading(false);
     }
-  }
+  }, [toast]);
 
   useEffect(() => {
     fetchData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchData]);
 
 
   const handleSaveUser = async (user: User, password?: string) => {
@@ -268,6 +267,18 @@ export default function UsersPage() {
     }
   };
 
+  const getUserCourses = (user: User) => {
+    if (user.role === 'tutor' || user.role === 'lecturer') {
+        return user.assignedCourses || [];
+    }
+    if (user.role === 'student') {
+        return courses
+            .filter(course => course.enrolledStudents?.includes(user.id))
+            .map(course => course.id);
+    }
+    return [];
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex justify-between items-center">
@@ -296,7 +307,9 @@ export default function UsersPage() {
                     </TableRow>
                     </TableHeader>
                     <TableBody>
-                    {users.map((user) => (
+                    {users.map((user) => {
+                       const userCourses = getUserCourses(user);
+                       return (
                         <TableRow key={user.id}>
                             <TableCell>
                             <div className="flex items-center gap-3">
@@ -317,9 +330,9 @@ export default function UsersPage() {
                             <Badge variant={user.status === 'Active' ? 'default' : 'destructive'}>{user.status}</Badge>
                         </TableCell>
                         <TableCell>
-                           {(user.role === 'tutor' || user.role === 'lecturer') && user.assignedCourses && user.assignedCourses.length > 0 ? (
+                           {userCourses.length > 0 ? (
                                 <div className="flex flex-wrap gap-1 max-w-xs">
-                                    {user.assignedCourses.map(courseId => {
+                                    {userCourses.map(courseId => {
                                         const course = courses.find(c => c.id === courseId);
                                         return (
                                             <TooltipProvider key={courseId} delayDuration={100}>
@@ -335,7 +348,7 @@ export default function UsersPage() {
                                         )
                                     })}
                                 </div>
-                            ) : (user.role === 'tutor' || user.role === 'lecturer') ? 'None' : 'N/A'}
+                            ) : (user.role === 'student' || user.role === 'tutor' || user.role === 'lecturer') ? 'None' : 'N/A'}
                         </TableCell>
                         <TableCell className="text-right">
                             <DropdownMenu>
@@ -364,7 +377,8 @@ export default function UsersPage() {
                             </DropdownMenu>
                         </TableCell>
                         </TableRow>
-                    ))}
+                       )
+                    })}
                     </TableBody>
                 </Table>
             )}
