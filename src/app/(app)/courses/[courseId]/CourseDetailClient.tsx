@@ -23,6 +23,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { User, getUsers } from "@/services/user-service";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 const LessonIcon = ({ type }: { type: Lesson['type'] }) => {
@@ -476,11 +477,12 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
                      <Accordion type="single" collapsible className="w-full" defaultValue={course.modules.length > 0 ? course.modules[0].id : undefined}>
                         {course.modules.map((module) => (
                             <AccordionItem value={module.id} key={module.id}>
-                                <AccordionTrigger className="text-lg font-semibold hover:no-underline">
-                                    <div className="flex items-center justify-between w-full pr-2">
+                                <div className="flex items-center w-full">
+                                    <AccordionTrigger className="text-lg font-semibold hover:no-underline flex-grow">
                                         <span>{module.title}</span>
-                                        {editMode && isLecturerOrAdmin && (
-                                            <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+                                    </AccordionTrigger>
+                                    {editMode && isLecturerOrAdmin && (
+                                        <div className="flex items-center pl-2" onClick={(e) => e.stopPropagation()}>
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>
                                                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
@@ -496,10 +498,9 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
                                                     </AlertDialogFooter>
                                                 </AlertDialogContent>
                                             </AlertDialog>
-                                            </div>
-                                        )}
-                                    </div>
-                                </AccordionTrigger>
+                                        </div>
+                                    )}
+                                </div>
                                 <AccordionContent>
                                     <ul className="space-y-1">
                                         {module.lessons.map((lesson) => (
