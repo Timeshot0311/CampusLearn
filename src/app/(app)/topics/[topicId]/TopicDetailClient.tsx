@@ -48,7 +48,6 @@ const topicsData: Record<string, any> = {
     materials: [
       { name: "Tunneling_Example.pdf", type: "pdf" },
       { name: "Intro_to_Tunneling.mp4", type: "video" },
-      { name: "Quantum_Wave_Function_Audio_Explanation.mp3", type: "audio" },
     ]
   },
   "2": {
