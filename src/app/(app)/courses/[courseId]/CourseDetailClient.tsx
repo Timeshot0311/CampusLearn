@@ -470,7 +470,7 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
                                         {editMode && (
                                             <div className="flex items-center">
                                             <AssignStaffDialog course={course} module={module} onStaffAssigned={onDataSaved}>
-                                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary/90 hover:bg-primary/10"><Users className="h-4 w-4" /></Button>
+                                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary/90 hover:bg-primary/10" onClick={(e) => e.stopPropagation()}><Users className="h-4 w-4" /></Button>
                                             </AssignStaffDialog>
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild onClick={(e) => e.stopPropagation()}>
