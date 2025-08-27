@@ -105,12 +105,11 @@ function MultiSelect({
                 <CommandItem
                     key={option.value}
                     onSelect={() => {
-                    onChange(
-                        selected.includes(option.value)
-                        ? selected.filter((item) => item !== option.value)
-                        : [...selected, option.value]
-                    );
-                    setOpen(true);
+                        onChange(
+                            selected.includes(option.value)
+                            ? selected.filter((item) => item !== option.value)
+                            : [...selected, option.value]
+                        );
                     }}
                 >
                     <Check
