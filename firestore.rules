@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -74,7 +75,7 @@ service cloud.firestore {
     match /Attempts/{attemptId} {
        allow read: if isAuth() && (isOwner(resource.data.studentId) || isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
        allow create: if isAuth() && isStudent(request.auth.uid);
-       allow update, delete: never; // Attempts should be immutable
+       allow update, delete: if false; // Attempts should be immutable
     }
 
     match /Grades/{gradeId} {
@@ -99,7 +100,7 @@ service cloud.firestore {
 
     match /AuditLogs/{logId} {
       allow read: if isAuth() && isAdmin(request.auth.uid);
-      allow create, update, delete: never; // Logs should be immutable and created server-side
+      allow create, update, delete: if false; // Logs should be immutable and created server-side
     }
   }
 }
