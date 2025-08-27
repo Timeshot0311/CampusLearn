@@ -12,6 +12,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import {
   Popover,
@@ -28,9 +29,10 @@ export type MultiSelectOption = {
 interface MultiSelectProps {
   options: MultiSelectOption[];
   selected: string[];
-  onChange: React.Dispatch<React.SetStateAction<string[]>>;
+  onChange: (selected: string[]) => void;
   className?: string;
   placeholder?: string;
+  disabled?: boolean;
 }
 
 function MultiSelect({
@@ -39,6 +41,7 @@ function MultiSelect({
   onChange,
   className,
   placeholder = "Select options",
+  disabled = false
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -53,8 +56,9 @@ function MultiSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between h-auto", className)}
-          onClick={() => setOpen(!open)}
+          className={cn("w-full justify-between h-auto", className, disabled && "opacity-50 cursor-not-allowed")}
+          onClick={() => !disabled && setOpen(!open)}
+          disabled={disabled}
         >
           <div className="flex gap-1 flex-wrap">
             {selected.length > 0 ? (
@@ -66,12 +70,13 @@ function MultiSelect({
                             key={option.value}
                             className="mr-1 mb-1"
                             onClick={(e) => {
+                                if (disabled) return;
                                 e.stopPropagation();
                                 handleUnselect(option.value);
                             }}
                         >
                             {option.label}
-                            <X className="ml-1 h-3 w-3" />
+                            {!disabled && <X className="ml-1 h-3 w-3" />}
                         </Badge>
                     ))
             ) : (
@@ -81,33 +86,35 @@ function MultiSelect({
           <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
         <Command>
           <CommandInput placeholder="Search..." />
-          <CommandEmpty>No item found.</CommandEmpty>
-          <CommandGroup className="max-h-64 overflow-auto">
-            {options.map((option) => (
-              <CommandItem
-                key={option.value}
-                onSelect={() => {
-                  onChange(
-                    selected.includes(option.value)
-                      ? selected.filter((item) => item !== option.value)
-                      : [...selected, option.value]
-                  );
-                  setOpen(true);
-                }}
-              >
-                <Check
-                  className={cn(
-                    "mr-2 h-4 w-4",
-                    selected.includes(option.value) ? "opacity-100" : "opacity-0"
-                  )}
-                />
-                {option.label}
-              </CommandItem>
-            ))}
-          </CommandGroup>
+          <CommandList>
+            <CommandEmpty>No item found.</CommandEmpty>
+            <CommandGroup className="max-h-64 overflow-auto">
+                {options.map((option) => (
+                <CommandItem
+                    key={option.value}
+                    onSelect={() => {
+                    onChange(
+                        selected.includes(option.value)
+                        ? selected.filter((item) => item !== option.value)
+                        : [...selected, option.value]
+                    );
+                    setOpen(true);
+                    }}
+                >
+                    <Check
+                    className={cn(
+                        "mr-2 h-4 w-4",
+                        selected.includes(option.value) ? "opacity-100" : "opacity-0"
+                    )}
+                    />
+                    {option.label}
+                </CommandItem>
+                ))}
+            </CommandGroup>
+          </CommandList>
         </Command>
       </PopoverContent>
     </Popover>

@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -238,8 +238,8 @@ const AssignStaffDialog = ({ course, module, onStaffAssigned, children }: { cour
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [lecturers, setLecturers] = useState<MultiSelectOption[]>([]);
     const [tutors, setTutors] = useState<MultiSelectOption[]>([]);
-    const [assignedLecturers, setAssignedLecturers] = useState<string[]>(module.assignedLecturers || []);
-    const [assignedTutors, setAssignedTutors] = useState<string[]>(module.assignedTutors || []);
+    const [assignedLecturers, setAssignedLecturers] = useState<string[]>([]);
+    const [assignedTutors, setAssignedTutors] = useState<string[]>([]);
 
     const isAdmin = user?.role === 'admin';
     const isLecturer = user?.role === 'lecturer';
@@ -292,7 +292,7 @@ const AssignStaffDialog = ({ course, module, onStaffAssigned, children }: { cour
                             selected={assignedLecturers}
                             onChange={setAssignedLecturers}
                             placeholder="Assign lecturers..."
-                            className={!isAdmin ? "pointer-events-none opacity-50" : ""}
+                            disabled={!isAdmin}
                         />
                          {!isAdmin && isLecturer && <p className="text-xs text-muted-foreground">Only admins can assign lecturers.</p>}
                     </div>
@@ -307,7 +307,7 @@ const AssignStaffDialog = ({ course, module, onStaffAssigned, children }: { cour
                     </div>
                 </div>
                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                    <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
                     <Button onClick={handleSave}>Save Assignments</Button>
                 </DialogFooter>
             </DialogContent>
