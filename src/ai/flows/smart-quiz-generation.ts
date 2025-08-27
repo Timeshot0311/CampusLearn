@@ -15,7 +15,7 @@ import {z} from 'genkit';
 const GenerateQuizInputSchema = z.object({
   learningMaterial: z
     .string()
-    .describe('The learning material to generate a quiz from.'),
+    .describe('The learning material to generate a quiz from. This can be lecture notes, an article, a video transcript, or any other text-based content.'),
   numberOfQuestions: z
     .number()
     .describe('The number of questions to generate in the quiz.'),
@@ -35,7 +35,7 @@ const prompt = ai.definePrompt({
   name: 'generateQuizPrompt',
   input: {schema: GenerateQuizInputSchema},
   output: {schema: GenerateQuizOutputSchema},
-  prompt: `You are an expert quiz generator. You will generate a quiz from the given learning material.
+  prompt: `You are an expert quiz generator. You will generate a quiz from the given learning material, which could be lecture notes, an article, a video transcript, or content from a PDF.
 
 Learning Material: {{{learningMaterial}}}
 

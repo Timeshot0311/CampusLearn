@@ -93,7 +93,7 @@ export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
         <DialogHeader>
           <DialogTitle>Smart Quiz Generation</DialogTitle>
           <DialogDescription>
-            Paste in any learning material to automatically generate a practice quiz for this topic.
+            Paste in any learning material (e.g., lecture notes, an article, a video transcript) to automatically generate a practice quiz for this topic.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">

@@ -44,13 +44,14 @@ const tutorNav = [
   { href: "/courses", icon: BookOpen, label: "Courses" },
   { href: "/topics", icon: MessageSquarePlus, label: "Help Topics" },
   { href: "/assignments", icon: ClipboardCheck, label: "Submissions" },
+  { href: "/grades", icon: GraduationCap, label: "Gradebook" },
   { href: "/analytics", icon: LineChart, label: "Analytics" },
   { href: "/profile", icon: User, label: "Profile" },
 ];
 
 const lecturerNav = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
-  { href: "/courses", icon: BookOpen, label: "Manage Courses" },
+  { href: "/courses/manage", icon: BookOpen, label: "Course Management" },
   { href: "/topics", icon: MessageSquarePlus, label: "Manage Topics" },
   { href: "/assignments", icon: ClipboardCheck, label: "Submissions" },
   { href: "/analytics", icon: LineChart, label: "Analytics" },
@@ -60,7 +61,7 @@ const lecturerNav = [
 const adminNav = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
   { href: "/users", icon: Users, label: "User Management" },
-  { href: "/courses", icon: Package, label: "Course Management" },
+  { href: "/courses/manage", icon: Package, label: "Course Management" },
   { href: "/analytics", icon: LineChart, label: "System Analytics" },
   { href: "/profile", icon: User, label: "Profile" },
 ];
