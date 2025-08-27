@@ -10,10 +10,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { PlusCircle, Trash2, GripVertical } from "lucide-react";
+import { PlusCircle, Trash2, GripVertical, FileText, Youtube } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
+
+type NewLessonState = {
+    moduleId: string;
+    title: string;
+    type: Lesson['type'];
+    content: string;
+};
 
 export default function CourseContentEditor() {
     const params = useParams();
@@ -25,7 +33,7 @@ export default function CourseContentEditor() {
     const [course, setCourse] = useState<Course | null>(null);
     const [loading, setLoading] = useState(true);
     const [newModuleName, setNewModuleName] = useState("");
-    const [newLesson, setNewLesson] = useState<{ moduleId: string; title: string; type: Lesson['type']; duration: string } | null>(null);
+    const [newLesson, setNewLesson] = useState<NewLessonState | null>(null);
 
 
     useEffect(() => {
@@ -39,7 +47,7 @@ export default function CourseContentEditor() {
                     router.push("/courses/manage");
                     return;
                 }
-                if (courseData.ownerId !== user.id && user.role !== 'admin') {
+                if (courseData.ownerId !== user.id && user.role !== 'admin' && user.role !== 'lecturer') {
                      toast({ title: "Access Denied", description: "You don't have permission to edit this course.", variant: "destructive"});
                      router.push("/courses/manage");
                      return;
@@ -73,13 +81,20 @@ export default function CourseContentEditor() {
     };
     
     const handleAddLesson = async () => {
-        if (!newLesson || !course) return;
+        if (!newLesson || !course || !newLesson.title.trim() || !newLesson.content.trim()) {
+            toast({ title: "Missing fields", description: "Please provide a title and content for the lesson.", variant: "destructive" });
+            return;
+        };
         
         const { moduleId, ...lessonData } = newLesson;
+        const lessonToAdd: Lesson = {
+            ...lessonData,
+            id: uuidv4()
+        };
         
         const updatedModules = course.modules.map(m => {
             if (m.id === moduleId) {
-                return { ...m, lessons: [...m.lessons, lessonData] };
+                return { ...m, lessons: [...m.lessons, lessonToAdd] };
             }
             return m;
         });
@@ -111,7 +126,7 @@ export default function CourseContentEditor() {
                     <CardDescription>Manage the modules and lessons for this course.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Accordion type="multiple" className="w-full space-y-4">
+                    <Accordion type="multiple" className="w-full space-y-4" defaultValue={course.modules.map(m => m.id)}>
                         {course.modules.map(module => (
                             <AccordionItem value={module.id} key={module.id} className="border rounded-lg px-4">
                                 <AccordionTrigger className="text-lg font-semibold hover:no-underline">
@@ -122,11 +137,11 @@ export default function CourseContentEditor() {
                                 </AccordionTrigger>
                                 <AccordionContent>
                                     <ul className="space-y-3 pl-8 py-4">
-                                        {module.lessons.map((lesson, index) => (
-                                            <li key={index} className="flex justify-between items-center p-3 bg-muted/50 rounded-md">
+                                        {module.lessons.map((lesson) => (
+                                            <li key={lesson.id} className="flex justify-between items-center p-3 bg-muted/50 rounded-md">
                                                 <div>
                                                     <p className="font-medium">{lesson.title}</p>
-                                                    <p className="text-sm text-muted-foreground capitalize">{lesson.type} - {lesson.duration}</p>
+                                                    <p className="text-sm text-muted-foreground capitalize">{lesson.type}</p>
                                                 </div>
                                                 <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive"/></Button>
                                             </li>
@@ -136,17 +151,45 @@ export default function CourseContentEditor() {
                                     {newLesson?.moduleId === module.id ? (
                                         <div className="p-4 border-t space-y-4">
                                             <h4 className="font-semibold">New Lesson</h4>
-                                            <Input placeholder="Lesson Title" value={newLesson.title} onChange={e => setNewLesson({...newLesson, title: e.target.value})} />
-                                            <div className="flex gap-4">
-                                                <Select value={newLesson.type} onValueChange={(v: Lesson['type']) => setNewLesson({...newLesson, type: v})}>
+                                            <div className="grid gap-2">
+                                                <Label>Lesson Title</Label>
+                                                <Input placeholder="e.g., The Structure of an Atom" value={newLesson.title} onChange={e => setNewLesson({...newLesson, title: e.target.value})} />
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label>Lesson Type</Label>
+                                                <Select value={newLesson.type} onValueChange={(v: Lesson['type']) => setNewLesson({...newLesson, type: v, content: ''})}>
                                                     <SelectTrigger><SelectValue placeholder="Lesson Type" /></SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="video">Video</SelectItem>
-                                                        <SelectItem value="reading">Reading</SelectItem>
-                                                        <SelectItem value="quiz">Quiz</SelectItem>
+                                                        <SelectItem value="article">Article</SelectItem>
+                                                        <SelectItem value="youtube">YouTube Video</SelectItem>
+                                                        <SelectItem value="pdf">PDF</SelectItem>
                                                     </SelectContent>
                                                 </Select>
-                                                <Input placeholder="Duration (e.g., 12:34)" value={newLesson.duration} onChange={e => setNewLesson({...newLesson, duration: e.target.value})} />
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label>Content</Label>
+                                                {newLesson.type === 'article' && (
+                                                    <Textarea 
+                                                        placeholder="Write your article content here. Markdown is supported." 
+                                                        value={newLesson.content} 
+                                                        onChange={e => setNewLesson({...newLesson, content: e.target.value})} 
+                                                        rows={10}
+                                                    />
+                                                )}
+                                                {newLesson.type === 'youtube' && (
+                                                    <Input 
+                                                        placeholder="https://www.youtube.com/watch?v=..." 
+                                                        value={newLesson.content} 
+                                                        onChange={e => setNewLesson({...newLesson, content: e.target.value})}
+                                                    />
+                                                )}
+                                                {newLesson.type === 'pdf' && (
+                                                     <Input 
+                                                        placeholder="https://example.com/path/to/document.pdf" 
+                                                        value={newLesson.content} 
+                                                        onChange={e => setNewLesson({...newLesson, content: e.target.value})}
+                                                    />
+                                                )}
                                             </div>
                                             <div className="flex gap-2 justify-end">
                                                 <Button variant="ghost" onClick={() => setNewLesson(null)}>Cancel</Button>
@@ -155,7 +198,7 @@ export default function CourseContentEditor() {
                                         </div>
                                     ) : (
                                         <div className="p-2 border-t">
-                                            <Button variant="link" onClick={() => setNewLesson({ moduleId: module.id, title: '', type: 'video', duration: '' })}>
+                                            <Button variant="link" onClick={() => setNewLesson({ moduleId: module.id, title: '', type: 'article', content: '' })}>
                                                 <PlusCircle className="mr-2 h-4 w-4"/> Add Lesson
                                             </Button>
                                         </div>
@@ -180,4 +223,3 @@ export default function CourseContentEditor() {
         </div>
     );
 }
-

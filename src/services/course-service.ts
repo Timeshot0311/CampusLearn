@@ -3,10 +3,11 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 
 export type Lesson = {
+    id: string;
     title: string;
-    type: 'video' | 'reading' | 'quiz';
-    duration: string;
-    completed?: boolean; // This will be a per-student status, but for structure it's here
+    type: 'article' | 'video' | 'quiz' | 'pdf' | 'youtube';
+    content: string; // For article: markdown; for others: URL
+    duration?: string; // Optional
 };
 
 export type Module = {
