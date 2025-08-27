@@ -9,7 +9,7 @@ import {
   Home,
   LineChart,
   Package,
-  Settings,
+  MessageSquarePlus,
   Users,
   PanelLeft,
 } from "lucide-react";
@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 const studentNav = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
   { href: "/courses", icon: BookOpen, label: "My Courses" },
+  { href: "/topics", icon: MessageSquarePlus, label: "Help Topics" },
   { href: "/assignments", icon: ClipboardCheck, label: "Assignments" },
   { href: "/grades", icon: GraduationCap, label: "Grades" },
 ];
@@ -45,6 +46,15 @@ const studentNav = [
 const tutorNav = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
   { href: "/courses", icon: BookOpen, label: "Courses" },
+  { href: "/topics", icon: MessageSquarePlus, label: "Help Topics" },
+  { href: "/assignments", icon: ClipboardCheck, label: "Submissions" },
+  { href: "/analytics", icon: LineChart, label: "Analytics" },
+];
+
+const lecturerNav = [
+  { href: "/dashboard", icon: Home, label: "Dashboard" },
+  { href: "/courses", icon: BookOpen, label: "Manage Courses" },
+  { href: "/topics", icon: MessageSquarePlus, label: "Manage Topics" },
   { href: "/assignments", icon: ClipboardCheck, label: "Submissions" },
   { href: "/analytics", icon: LineChart, label: "Analytics" },
 ];
@@ -59,6 +69,7 @@ const adminNav = [
 const navItems = {
   student: studentNav,
   tutor: tutorNav,
+  lecturer: lecturerNav,
   admin: adminNav,
 };
 
@@ -85,7 +96,8 @@ function NavContent() {
                 href={item.href}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-                  pathname === item.href && "bg-muted text-primary"
+                  pathname.startsWith(item.href) && item.href !== "/" && "bg-muted text-primary",
+                  pathname === "/" && item.href === "/" && "bg-muted text-primary"
                 )}
               >
                 <item.icon className="h-4 w-4" />

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode, useMemo } from 'react';
 
-type Role = 'student' | 'tutor' | 'admin';
+export type Role = 'student' | 'tutor' | 'admin' | 'lecturer';
 
 type User = {
   name: string;
@@ -23,6 +23,12 @@ const users: Record<Role, User> = {
     email: 'e.reed@campus.edu',
     role: 'tutor',
     avatar: 'https://i.pravatar.cc/150?u=evelyn',
+  },
+  lecturer: {
+    name: 'Dr. Samuel Green',
+    email: 's.green@campus.edu',
+    role: 'lecturer',
+    avatar: 'https://i.pravatar.cc/150?u=samuel'
   },
   admin: {
     name: 'Sam Wallace',

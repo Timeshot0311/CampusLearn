@@ -13,6 +13,7 @@ export default function DashboardPage() {
       case 'student':
         return <DashboardStudent />;
       case 'tutor':
+      case 'lecturer':
         return <DashboardTutor />;
       case 'admin':
         return <DashboardAdmin />;

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Trash2, Edit, AlertCircle } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -41,12 +41,13 @@ import {
 
 import { useState, useReducer } from "react";
 import { useToast } from "@/hooks/use-toast";
+import type { Role } from "@/hooks/use-auth";
 
 type User = {
     id: string;
     name: string;
     email: string;
-    role: "student" | "tutor" | "admin";
+    role: Role;
     status: "Active" | "Inactive";
     avatar: string;
 };
@@ -54,6 +55,7 @@ type User = {
 const initialUsers: User[] = [
     { id: "1", name: "Alex Doe", email: "alex.doe@campus.edu", role: "student", status: "Active", avatar: "https://i.pravatar.cc/150?u=alex" },
     { id: "2", name: "Dr. Evelyn Reed", email: "e.reed@campus.edu", role: "tutor", status: "Active", avatar: "https://i.pravatar.cc/150?u=evelyn" },
+    { id: "6", name: "Dr. Samuel Green", email: "s.green@campus.edu", role: "lecturer", status: "Active", avatar: "https://i.pravatar.cc/150?u=samuel" },
     { id: "3", name: "Sam Wallace", email: "s.wallace@campus.edu", role: "admin", status: "Active", avatar: "https://i.pravatar.cc/150?u=sam" },
     { id: "4", name: "Bob Williams", email: "bob.w@campus.edu", role: "student", status: "Inactive", avatar: "https://i.pravatar.cc/150?u=bob" },
     { id: "5", name: "Charlie Brown", email: "charlie.b@campus.edu", role: "student", status: "Active", avatar: "https://i.pravatar.cc/150?u=charlie" },
@@ -130,6 +132,7 @@ function UserDialog({ onSave, user, children }: { onSave: (user: User) => void; 
               <SelectContent>
                 <SelectItem value="student">Student</SelectItem>
                 <SelectItem value="tutor">Tutor</SelectItem>
+                <SelectItem value="lecturer">Lecturer</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
               </SelectContent>
             </Select>
