@@ -23,6 +23,7 @@ import { getTopic, updateTopic, addReply, addMaterial, Topic, TopicStatus, Topic
 import { Skeleton } from "@/components/ui/skeleton";
 import { QuizGeneratorDialog } from "@/components/quiz-generator-dialog";
 import { QuizTakerDialog } from "@/components/quiz-taker-dialog";
+import { Course, getCourses } from "@/services/course-service";
 
 
 function MaterialIcon({ type }: { type: string }) {
@@ -37,33 +38,43 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
   const { toast } = useToast();
   
   const [topic, setTopic] = useState<Topic | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [newReply, setNewReply] = useState("");
   const [replying, setReplying] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  const isTutorOrLecturerOrAdmin = user.role === "tutor" || user.role === "lecturer" || user.role === "admin";
   const isTutorOrLecturer = user.role === "tutor" || user.role === "lecturer";
+  const isTutorOrLecturerOrAdmin = isTutorOrLecturer || user.role === "admin";
   const isClosed = topic?.status === "Closed";
   
-  const canTutorReply = isTutorOrLecturer ? user.assignedCourses?.includes(topic?.course || '') : true;
-  const canReply = (!isClosed && (user.role === 'student' || canTutorReply)) || isTutorOrLecturerOrAdmin;
-
+  const canTutorReply = () => {
+    if (!isTutorOrLecturer || !topic) return false;
+    const courseForTopic = courses.find(c => c.title === topic.course);
+    if (!courseForTopic) return false; // Tutor can't reply if course doesn't exist
+    return user.assignedCourses?.includes(courseForTopic.id) || false;
+  }
+  
+  const canReply = (!isClosed && (user.role === 'student' || canTutorReply() || user.role === 'admin'));
   const isSubscribed = topic?.subscribers?.includes(user.id);
 
   useEffect(() => {
     if (!topicId) return;
-    const fetchTopic = async () => {
+    const fetchTopicData = async () => {
         try {
-            const fetchedTopic = await getTopic(topicId);
+            const [fetchedTopic, fetchedCourses] = await Promise.all([
+              getTopic(topicId),
+              getCourses()
+            ]);
             setTopic(fetchedTopic);
+            setCourses(fetchedCourses);
         } catch (error) {
-            toast({ title: "Error fetching topic", variant: "destructive" });
+            toast({ title: "Error fetching topic data", variant: "destructive" });
         } finally {
             setLoading(false);
         }
     };
-    fetchTopic();
+    fetchTopicData();
   }, [topicId, toast]);
 
 
@@ -263,6 +274,7 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
                     placeholder={
                         isClosed ? "This topic is closed." :
                         !canReply && isTutorOrLecturer ? `You are not assigned to the "${topic.course}" course and cannot reply.` :
+                        !canReply ? "You cannot reply to this topic." :
                         "Type your message here..."
                     }
                     value={newReply}
@@ -351,3 +363,5 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
     </div>
   );
 }
+
+    
