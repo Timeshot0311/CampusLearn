@@ -50,9 +50,9 @@ function updateTopicInStorage(topic: any) {
 
 
 function MaterialIcon({ type }: { type: string }) {
-    if (type === 'pdf') return <FileText className="h-5 w-5 text-muted-foreground" />;
-    if (type === 'video') return <Video className="h-5 w-5 text-muted-foreground" />;
-    if (type === 'audio') return <Music className="h-5 w-5 text-muted-foreground" />;
+    if (type.startsWith('video')) return <Video className="h-5 w-5 text-muted-foreground" />;
+    if (type.startsWith('audio')) return <Music className="h-5 w-5 text-muted-foreground" />;
+    if (type.includes('pdf')) return <FileText className="h-5 w-5 text-muted-foreground" />;
     return <Paperclip className="h-5 w-5 text-muted-foreground" />;
 }
 
@@ -218,17 +218,19 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
           </CardHeader>
           <CardContent className="space-y-2">
              {topicData.materials.map((material: any) => (
-                <div key={material.name} className="flex items-center p-3 rounded-md border justify-between">
-                    <div className="flex items-center gap-3 truncate">
-                        <MaterialIcon type={material.type} />
-                        <span className="text-sm font-medium truncate">{material.name}</span>
+                material.name && (
+                    <div key={material.name} className="flex items-center p-3 rounded-md border justify-between">
+                        <div className="flex items-center gap-3 truncate">
+                            <MaterialIcon type={material.type} />
+                            <span className="text-sm font-medium truncate">{material.name}</span>
+                        </div>
+                        <Button variant="ghost" size="icon" className="flex-shrink-0" onClick={() => handleDownload(material.name)}>
+                            <Download className="h-4 w-4"/>
+                        </Button>
                     </div>
-                    <Button variant="ghost" size="icon" className="flex-shrink-0" onClick={() => handleDownload(material.name)}>
-                        <Download className="h-4 w-4"/>
-                    </Button>
-                </div>
+                )
              ))}
-             {topicData.materials.length === 0 && (
+             {topicData.materials.filter((m: any) => m.name).length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">No materials uploaded yet.</p>
              )}
              {isTutorOrLecturerOrAdmin && (
