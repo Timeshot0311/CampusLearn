@@ -15,7 +15,7 @@ export type Submission = {
     avatar: string;
     course: string;
     assignment: string;
-    submitted: string;
+    submitted: string; // This can be a string representation of a date, e.g., an ISO string.
     submission: string; // The actual content
 }
 
