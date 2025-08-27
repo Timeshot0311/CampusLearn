@@ -19,27 +19,14 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { generateAssignmentFeedback } from "@/ai/flows/ai-powered-feedback-generator";
 import { Loader2 } from "lucide-react";
+import { Assignment, Submission, getStudentAssignments, getTutorSubmissions } from "@/services/assignment-service";
 
-const studentAssignments = [
-  { name: "Quantum Entanglement Essay", course: "Quantum Computing", dueDate: "2024-08-15", status: "Submitted" },
-  { name: "Benzene Reactions Lab Report", course: "Organic Chemistry", dueDate: "2024-08-18", status: "In Progress" },
-  { name: "Plato's 'Republic' Analysis", course: "Ancient Philosophy", dueDate: "2024-08-22", status: "Not Started" },
-  { name: "Problem Set 4", course: "Quantum Computing", dueDate: "2024-09-01", status: "Not Started" },
-];
 
-const tutorSubmissions = [
-  { student: "Alice Johnson", avatar: "https://i.pravatar.cc/150?u=alice", course: "Quantum Computing", assignment: "Problem Set 3", submitted: "2 hours ago", submission: "The student's submission text for Problem Set 3..." },
-  { student: "Bob Williams", avatar: "https://i.pravatar.cc/150?u=bob", course: "Organic Chemistry", assignment: "Lab Report 2", submitted: "5 hours ago", submission: "The student's submission text for Lab Report 2..." },
-  { student: "Charlie Brown", avatar: "https://i.pravatar.cc/150?u=charlie", course: "Ancient Philosophy", assignment: "Essay on Stoicism", submitted: "1 day ago", submission: "The student's submission text for the Essay on Stoicism..." },
-  { student: "Diana Prince", avatar: "https://i.pravatar.cc/150?u=diana", course: "Quantum Computing", assignment: "Problem Set 3", submitted: "2 days ago", submission: "Another student's submission text for Problem Set 3..." },
-  { student: "Ethan Hunt", avatar: "https://i.pravatar.cc/150?u=ethan", course: "Organic Chemistry", assignment: "Lab Report 2", submitted: "3 days ago", submission: "Another student's submission text for Lab Report 2..." },
-];
-
-function GradeDialog({ submission }: { submission: (typeof tutorSubmissions)[0] }) {
+function GradeDialog({ submission }: { submission: Submission }) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -68,7 +55,7 @@ function GradeDialog({ submission }: { submission: (typeof tutorSubmissions)[0] 
   };
 
   const handleSubmitGrade = () => {
-    // Simulate submitting the grade
+    // In a real app, this would call a service to save the grade and feedback to Firestore.
     toast({
         title: "Grade Submitted!",
         description: `Feedback for ${submission.student} has been saved.`
@@ -118,6 +105,26 @@ function GradeDialog({ submission }: { submission: (typeof tutorSubmissions)[0] 
 }
 
 function StudentAssignments() {
+    const [assignments, setAssignments] = useState<Assignment[]>([]);
+    const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
+
+    useEffect(() => {
+        const fetchAssignments = async () => {
+            try {
+                // In a real app, you'd pass a real student ID
+                const fetchedAssignments = await getStudentAssignments("student-id-placeholder");
+                setAssignments(fetchedAssignments);
+            } catch (error) {
+                 toast({ title: "Error fetching assignments.", variant: "destructive" });
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchAssignments();
+    }, [toast]);
+
+
   return (
     <Card>
       <CardHeader>
@@ -135,19 +142,23 @@ function StudentAssignments() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {studentAssignments.map((assignment) => (
-              <TableRow key={assignment.name}>
-                <TableCell className="font-medium">{assignment.name}</TableCell>
-                <TableCell>{assignment.course}</TableCell>
-                <TableCell>{assignment.dueDate}</TableCell>
-                <TableCell className="text-right">
-                  <Badge variant={
-                    assignment.status === "Submitted" ? "default" :
-                    assignment.status === "In Progress" ? "secondary" : "outline"
-                  }>{assignment.status}</Badge>
-                </TableCell>
-              </TableRow>
-            ))}
+            {loading ? (
+                <TableRow><TableCell colSpan={4}>Loading assignments...</TableCell></TableRow>
+            ) : (
+                assignments.map((assignment) => (
+                <TableRow key={assignment.id}>
+                    <TableCell className="font-medium">{assignment.name}</TableCell>
+                    <TableCell>{assignment.course}</TableCell>
+                    <TableCell>{assignment.dueDate}</TableCell>
+                    <TableCell className="text-right">
+                    <Badge variant={
+                        assignment.status === "Submitted" ? "default" :
+                        assignment.status === "In Progress" ? "secondary" : "outline"
+                    }>{assignment.status}</Badge>
+                    </TableCell>
+                </TableRow>
+                ))
+            )}
           </TableBody>
         </Table>
       </CardContent>
@@ -156,6 +167,25 @@ function StudentAssignments() {
 }
 
 function TutorSubmissions() {
+    const [submissions, setSubmissions] = useState<Submission[]>([]);
+    const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
+
+    useEffect(() => {
+        const fetchSubmissions = async () => {
+            try {
+                // In a real app, you'd pass a real tutor ID
+                const fetchedSubmissions = await getTutorSubmissions("tutor-id-placeholder");
+                setSubmissions(fetchedSubmissions);
+            } catch (error) {
+                toast({ title: "Error fetching submissions.", variant: "destructive" });
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchSubmissions();
+    }, [toast]);
+
     return (
         <Card>
             <CardHeader>
@@ -174,25 +204,29 @@ function TutorSubmissions() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {tutorSubmissions.map((submission) => (
-                        <TableRow key={submission.student + submission.assignment}>
-                            <TableCell>
-                                <div className="flex items-center gap-2">
-                                    <Avatar className="h-8 w-8">
-                                    <AvatarImage src={submission.avatar} alt={submission.student} />
-                                    <AvatarFallback>{submission.student.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <span className="font-medium">{submission.student}</span>
-                                </div>
-                            </TableCell>
-                            <TableCell>{submission.course}</TableCell>
-                            <TableCell>{submission.assignment}</TableCell>
-                            <TableCell>{submission.submitted}</TableCell>
-                            <TableCell className="text-right">
-                                <GradeDialog submission={submission} />
-                            </TableCell>
-                        </TableRow>
-                        ))}
+                        {loading ? (
+                            <TableRow><TableCell colSpan={5}>Loading submissions...</TableCell></TableRow>
+                        ) : (
+                            submissions.map((submission) => (
+                            <TableRow key={submission.id}>
+                                <TableCell>
+                                    <div className="flex items-center gap-2">
+                                        <Avatar className="h-8 w-8">
+                                        <AvatarImage src={submission.avatar} alt={submission.student} />
+                                        <AvatarFallback>{submission.student.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <span className="font-medium">{submission.student}</span>
+                                    </div>
+                                </TableCell>
+                                <TableCell>{submission.course}</TableCell>
+                                <TableCell>{submission.assignment}</TableCell>
+                                <TableCell>{submission.submitted}</TableCell>
+                                <TableCell className="text-right">
+                                    <GradeDialog submission={submission} />
+                                </TableCell>
+                            </TableRow>
+                            ))
+                        )}
                     </TableBody>
                 </Table>
             </CardContent>

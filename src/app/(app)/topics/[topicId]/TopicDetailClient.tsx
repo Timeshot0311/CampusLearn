@@ -14,39 +14,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Paperclip, FileText, Video, Music, Send, MoreVertical, Download, ClipboardCheck } from "lucide-react";
+import { Paperclip, FileText, Video, Music, Send, MoreVertical, Download, Loader2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-
-
-type TopicStatus = "Open" | "Closed" | "Reopened";
-
-function getTopicFromStorage(topicId: string) {
-    if (typeof window === 'undefined') return null;
-    const storedTopics = localStorage.getItem('topics');
-    if (storedTopics) {
-        const topics = JSON.parse(storedTopics);
-        return topics.find((t: any) => t.id === topicId) || null;
-    }
-    return null;
-}
-
-function updateTopicInStorage(topic: any) {
-    if (typeof window === 'undefined') return;
-    const storedTopics = localStorage.getItem('topics');
-    let allTopics = storedTopics ? JSON.parse(storedTopics) : [];
-
-    const index = allTopics.findIndex((t: any) => t.id === topic.id);
-    if (index !== -1) {
-        allTopics[index] = topic;
-    } else {
-        allTopics.push(topic);
-    }
-    localStorage.setItem('topics', JSON.stringify(allTopics));
-    window.dispatchEvent(new Event('storage'));
-}
+import { getTopic, updateTopic, addReply, addMaterial, Topic, TopicStatus, TopicReply } from "@/services/topic-service";
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 function MaterialIcon({ type }: { type: string }) {
@@ -60,74 +34,110 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  const [topicData, setTopicData] = useState<any>(null);
-
-  useEffect(() => {
-    setTopicData(getTopicFromStorage(topicId));
-  }, [topicId]);
-
+  const [topic, setTopic] = useState<Topic | null>(null);
+  const [loading, setLoading] = useState(true);
   const [newReply, setNewReply] = useState("");
+  const [replying, setReplying] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
   const isTutorOrLecturerOrAdmin = user.role === "tutor" || user.role === "lecturer" || user.role === "admin";
-  const isClosed = topicData?.status === "Closed";
+  const isClosed = topic?.status === "Closed";
   const canReply = !isClosed || isTutorOrLecturerOrAdmin;
 
 
-  const handleSendReply = () => {
-    if (!newReply.trim() || !canReply) return;
+  useEffect(() => {
+    if (!topicId) return;
+    const fetchTopic = async () => {
+        try {
+            const fetchedTopic = await getTopic(topicId);
+            setTopic(fetchedTopic);
+        } catch (error) {
+            toast({ title: "Error fetching topic", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchTopic();
+  }, [topicId, toast]);
 
-    const reply = {
+
+  const handleSendReply = async () => {
+    if (!newReply.trim() || !canReply || !topic) return;
+    setReplying(true);
+
+    const reply: TopicReply = {
         author: user.name,
         authorAvatar: user.avatar,
         role: user.role,
         text: newReply,
-        timestamp: "Just now",
+        timestamp: new Date().toISOString(), // Use ISO string for consistency
     };
     
-    const updatedTopic = {
-        ...topicData,
-        replies: [...topicData.replies, reply],
-    };
-
-    setTopicData(updatedTopic);
-    updateTopicInStorage(updatedTopic);
-
-    setNewReply("");
-    toast({ title: "Reply posted!" });
+    try {
+        await addReply(topic.id, reply);
+        setTopic(prev => prev ? { ...prev, replies: [...(prev.replies || []), reply] } : null);
+        setNewReply("");
+        toast({ title: "Reply posted!" });
+    } catch (error) {
+        toast({ title: "Error posting reply", variant: "destructive" });
+    } finally {
+        setReplying(false);
+    }
   }
 
-  const handleDownload = (materialName: string) => {
-    toast({ title: "Downloading...", description: `${materialName} will be downloaded.` });
+  const handleDownload = (materialUrl: string, materialName: string) => {
+    window.open(materialUrl, '_blank');
+    toast({ title: "Downloading...", description: `${materialName} will open in a new tab.` });
   }
 
-  const handleStatusChange = (status: TopicStatus) => {
-    const updatedTopic = { ...topicData, status };
-    setTopicData(updatedTopic);
-    updateTopicInStorage(updatedTopic);
-    toast({ title: "Topic Status Updated", description: `The topic has been marked as ${status}.`});
+  const handleStatusChange = async (status: TopicStatus) => {
+    if (!topic) return;
+    try {
+        await updateTopic(topic.id, { status });
+        setTopic(prev => prev ? { ...prev, status } : null);
+        toast({ title: "Topic Status Updated", description: `The topic has been marked as ${status}.`});
+    } catch (error) {
+        toast({ title: "Error updating status", variant: "destructive" });
+    }
   }
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      const newMaterial = {
-        name: file.name,
-        type: file.type.split('/')[0] || 'file'
-      };
-      const updatedTopic = {
-        ...topicData,
-        materials: [...topicData.materials, newMaterial]
-      };
-      setTopicData(updatedTopic);
-      updateTopicInStorage(updatedTopic);
-      toast({
-        title: "File Uploaded!",
-        description: `${file.name} has been added to the learning materials.`
-      });
+    if (file && topic) {
+        setUploading(true);
+        try {
+            const newMaterial = await addMaterial(topic.id, file);
+            setTopic(prev => prev ? { ...prev, materials: [...(prev.materials || []), newMaterial] } : null);
+            toast({ title: "File Uploaded!", description: `${file.name} has been added.` });
+        } catch (error) {
+            toast({ title: "Error uploading file", variant: "destructive" });
+        } finally {
+            setUploading(false);
+        }
     }
   };
 
-  if (!topicData) {
-    return <div>Loading topic...</div>;
+  if (loading) {
+    return (
+        <div className="grid md:grid-cols-3 gap-6">
+            <div className="md:col-span-2">
+                <Card>
+                    <CardHeader><Skeleton className="h-24 w-full" /></CardHeader>
+                    <CardContent><Skeleton className="h-64 w-full" /></CardContent>
+                </Card>
+            </div>
+            <div>
+                <Card>
+                    <CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader>
+                    <CardContent><Skeleton className="h-32 w-full" /></CardContent>
+                </Card>
+            </div>
+        </div>
+    )
+  }
+
+  if (!topic) {
+    return <div>Topic not found.</div>;
   }
 
 
@@ -138,23 +148,23 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
           <CardHeader>
             <div className="flex justify-between items-start">
               <div>
-                <Badge variant="outline">{topicData.course}</Badge>
-                <CardTitle className="mt-2 text-3xl font-headline">{topicData.title}</CardTitle>
-                <CardDescription className="mt-2">{topicData.description}</CardDescription>
+                <Badge variant="outline">{topic.course}</Badge>
+                <CardTitle className="mt-2 text-3xl font-headline">{topic.title}</CardTitle>
+                <CardDescription className="mt-2">{topic.description}</CardDescription>
               </div>
                <div className="flex items-center gap-2">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <div className="flex items-center gap-2 cursor-pointer">
-                            <Badge variant={topicData.status === 'Closed' ? 'destructive' : topicData.status === 'Reopened' ? 'secondary' : 'default'} className="capitalize">{topicData.status}</Badge>
+                            <Badge variant={topic.status === 'Closed' ? 'destructive' : topic.status === 'Reopened' ? 'secondary' : 'default'} className="capitalize">{topic.status}</Badge>
                             {isTutorOrLecturerOrAdmin && <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>}
                         </div>
                     </DropdownMenuTrigger>
                      {isTutorOrLecturerOrAdmin && (
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleStatusChange("Open")} className="text-green-600 focus:text-green-600">Mark as Open</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusChange("Reopened")} className="text-blue-600 focus:text-blue-600">Mark as Reopened</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusChange("Closed")} className="text-red-600 focus:text-red-600">Mark as Closed</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange("Open")}>Mark as Open</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange("Reopened")}>Mark as Reopened</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange("Closed")}>Mark as Closed</DropdownMenuItem>
                         </DropdownMenuContent>
                       )}
                 </DropdownMenu>
@@ -162,33 +172,34 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
             </div>
              <div className="flex items-center gap-2 text-sm text-muted-foreground pt-4">
                 <Avatar className="h-8 w-8">
-                    <AvatarImage src={topicData.authorAvatar} alt={topicData.author} />
-                    <AvatarFallback>{topicData.author?.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={topic.authorAvatar} alt={topic.author} />
+                    <AvatarFallback>{topic.author?.charAt(0)}</AvatarFallback>
                 </Avatar>
-                <span>Created by {topicData.author}</span>
+                <span>Created by {topic.author}</span>
               </div>
           </CardHeader>
           <Separator />
           <CardContent className="pt-6">
             <h2 className="text-xl font-semibold font-headline mb-4">Discussion</h2>
             <div className="space-y-6">
-              {topicData.replies.map((reply: any, index: number) => (
-                reply.author && reply.text && (
-                    <div key={index} className="flex items-start gap-4">
-                        <Avatar>
-                            <AvatarImage src={reply.authorAvatar} alt={reply.author} />
-                            <AvatarFallback>{reply.author?.charAt(0) || 'U'}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                            <div className="flex justify-between items-center">
-                                <p className="font-semibold">{reply.author} <span className="text-xs font-normal text-muted-foreground capitalize">({reply.role})</span></p>
-                                <p className="text-xs text-muted-foreground">{reply.timestamp}</p>
-                            </div>
-                            <p className="text-sm mt-1 p-3 bg-muted/50 rounded-lg">{reply.text}</p>
+              {topic.replies?.map((reply, index) => (
+                <div key={index} className="flex items-start gap-4">
+                    <Avatar>
+                        <AvatarImage src={reply.authorAvatar} alt={reply.author} />
+                        <AvatarFallback>{reply.author?.charAt(0) || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                        <div className="flex justify-between items-center">
+                            <p className="font-semibold">{reply.author} <span className="text-xs font-normal text-muted-foreground capitalize">({reply.role})</span></p>
+                            <p className="text-xs text-muted-foreground">{new Date(reply.timestamp).toLocaleString()}</p>
                         </div>
+                        <p className="text-sm mt-1 p-3 bg-muted/50 rounded-lg">{reply.text}</p>
                     </div>
-                )
+                </div>
               ))}
+              {(!topic.replies || topic.replies.length === 0) && (
+                <p className="text-sm text-muted-foreground text-center py-4">No replies yet.</p>
+              )}
             </div>
           </CardContent>
           <CardFooter className="flex flex-col items-start gap-4 pt-6 border-t">
@@ -200,10 +211,12 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
                     onChange={(e) => setNewReply(e.target.value)}
                     rows={4}
                     className="pr-24"
-                    disabled={!canReply}
+                    disabled={!canReply || replying}
                 />
-                <Button className="absolute bottom-3 right-3" size="sm" onClick={handleSendReply} disabled={!newReply.trim() || !canReply}>
-                    Send <Send className="ml-2 h-4 w-4"/>
+                <Button className="absolute bottom-3 right-3" size="sm" onClick={handleSendReply} disabled={!newReply.trim() || !canReply || replying}>
+                    {replying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {replying ? "Sending..." : "Send"}
+                    {!replying && <Send className="ml-2 h-4 w-4"/>}
                 </Button>
              </div>
           </CardFooter>
@@ -217,31 +230,36 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
             <CardDescription>Resources uploaded for this topic.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-             {topicData.materials.map((material: any) => (
-                material.name && (
-                    <div key={material.name} className="flex items-center p-3 rounded-md border justify-between">
-                        <div className="flex items-center gap-3 truncate">
-                            <MaterialIcon type={material.type} />
-                            <span className="text-sm font-medium truncate">{material.name}</span>
-                        </div>
-                        <Button variant="ghost" size="icon" className="flex-shrink-0" onClick={() => handleDownload(material.name)}>
-                            <Download className="h-4 w-4"/>
-                        </Button>
+             {topic.materials?.map((material) => (
+                <div key={material.name} className="flex items-center p-3 rounded-md border justify-between">
+                    <div className="flex items-center gap-3 truncate">
+                        <MaterialIcon type={material.type} />
+                        <span className="text-sm font-medium truncate">{material.name}</span>
                     </div>
-                )
+                    <Button variant="ghost" size="icon" className="flex-shrink-0" onClick={() => handleDownload(material.url, material.name)}>
+                        <Download className="h-4 w-4"/>
+                    </Button>
+                </div>
              ))}
-             {topicData.materials.filter((m: any) => m.name).length === 0 && (
+             {(!topic.materials || topic.materials.length === 0) && (
                 <p className="text-sm text-muted-foreground text-center py-4">No materials uploaded yet.</p>
              )}
              {isTutorOrLecturerOrAdmin && (
                 <div className="pt-4">
                     <label htmlFor="file-upload" className="w-full text-sm font-medium text-primary cursor-pointer inline-block p-4 border-2 border-dashed border-primary/50 rounded-lg text-center hover:bg-primary/10">
-                        <div className="flex items-center justify-center gap-2">
-                            <Paperclip className="h-4 w-4" />
-                            <span>Upload New Material</span>
-                        </div>
+                        {uploading ? (
+                            <div className="flex items-center justify-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span>Uploading...</span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center gap-2">
+                                <Paperclip className="h-4 w-4" />
+                                <span>Upload New Material</span>
+                            </div>
+                        )}
                     </label>
-                    <Input id="file-upload" type="file" className="hidden" onChange={handleFileUpload} />
+                    <Input id="file-upload" type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
                 </div>
              )}
           </CardContent>

@@ -1,5 +1,4 @@
 
-
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -31,23 +30,11 @@ import { useAuth } from "@/hooks/use-auth";
 import { PlusCircle, MessageSquare } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-
-type TopicStatus = "Open" | "Closed" | "Reopened";
-
-type Topic = {
-  id: string;
-  title: string;
-  description: string;
-  course: string;
-  author: string;
-  authorAvatar: string;
-  replies: any[]; 
-  status: TopicStatus;
-  materials: any[];
-};
+import { Topic, addTopic, getTopics } from "@/services/topic-service";
+import { Skeleton } from "@/components/ui/skeleton";
 
 
-function CreateTopicDialog({ onSave }: { onSave: (topic: Omit<Topic, 'id' | 'author' | 'authorAvatar' | 'replies' | 'status' | 'materials'>) => void }) {
+function CreateTopicDialog({ onSave }: { onSave: (topic: Omit<Topic, 'id'| 'author'| 'authorAvatar'|'replies'|'status'|'materials'>) => void }) {
     const [open, setOpen] = useState(false);
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -64,7 +51,6 @@ function CreateTopicDialog({ onSave }: { onSave: (topic: Omit<Topic, 'id' | 'aut
         setTitle("");
         setDescription("");
         setCourse("");
-        toast({ title: "Topic Created!", description: "Your request for help has been posted." });
     };
 
     return (
@@ -107,44 +93,42 @@ function CreateTopicDialog({ onSave }: { onSave: (topic: Omit<Topic, 'id' | 'aut
 
 export default function TopicsPage() {
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { toast } = useToast();
   const isStudent = user.role === "student";
 
   useEffect(() => {
-    const storedTopics = localStorage.getItem("topics");
-    if (storedTopics) {
-      setTopics(JSON.parse(storedTopics));
-    }
-  }, []);
-
-  useEffect(() => {
-    // This will listen for changes in other tabs
-    const handleStorageChange = () => {
-        const storedTopics = localStorage.getItem("topics");
-        if (storedTopics) {
-            setTopics(JSON.parse(storedTopics));
+    const fetchTopics = async () => {
+        try {
+            const fetchedTopics = await getTopics();
+            setTopics(fetchedTopics);
+        } catch (error) {
+            toast({ title: "Error fetching topics", variant: "destructive" });
+        } finally {
+            setLoading(false);
         }
     };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+    fetchTopics();
+  }, [toast]);
 
 
-
-  const handleCreateTopic = (newTopic: Omit<Topic, 'id' | 'author' | 'authorAvatar' | 'replies' | 'status' | 'materials'>) => {
-    const topic: Topic = {
-        ...newTopic,
-        id: (topics.length + 1).toString(),
-        author: user.name,
-        authorAvatar: user.avatar,
-        replies: [],
-        status: "Open",
-        materials: []
-    };
-    const newTopics = [topic, ...topics];
-    setTopics(newTopics);
-    localStorage.setItem("topics", JSON.stringify(newTopics));
+  const handleCreateTopic = async (newTopicData: Omit<Topic, 'id' | 'author' | 'authorAvatar' | 'replies' | 'status' | 'materials'>) => {
+    try {
+        const topicToAdd: Omit<Topic, 'id'> = {
+            ...newTopicData,
+            author: user.name,
+            authorAvatar: user.avatar,
+            replies: [],
+            status: "Open",
+            materials: []
+        };
+        const newTopicId = await addTopic(topicToAdd);
+        setTopics([{ ...topicToAdd, id: newTopicId }, ...topics]);
+        toast({ title: "Topic Created!", description: "Your request for help has been posted." });
+    } catch (error) {
+        toast({ title: "Error creating topic", variant: "destructive" });
+    }
   };
   
   return (
@@ -155,39 +139,61 @@ export default function TopicsPage() {
        </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {topics.map((topic) => (
-          <Card key={topic.id} className="flex flex-col">
-            <CardHeader>
-              <CardTitle className="font-headline text-lg">{topic.title}</CardTitle>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2">
-                <Avatar className="h-6 w-6">
-                    <AvatarImage src={topic.authorAvatar} alt={topic.author} />
-                    <Fallback>{topic.author.charAt(0)}</Fallback>
-                </Avatar>
-                <span>{topic.author}</span>
-              </div>
-              <CardDescription className="pt-2 line-clamp-3">{topic.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow">
-                 <Badge variant="outline">{topic.course}</Badge>
-            </CardContent>
-            <CardFooter className="flex justify-between items-center">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MessageSquare className="h-4 w-4"/>
-                    <span>{topic.replies.length} Replies</span>
-                    <Badge 
-                      variant={topic.status === 'Closed' ? 'destructive' : topic.status === 'Reopened' ? 'secondary' : 'default'} 
-                      className="capitalize pointer-events-none"
-                    >
-                      {topic.status}
-                    </Badge>
+        {loading ? (
+            Array.from({length: 3}).map((_, i) => (
+                 <Card key={i} className="flex flex-col">
+                    <CardHeader>
+                        <Skeleton className="h-6 w-3/4" />
+                         <div className="flex items-center gap-2 pt-2">
+                            <Skeleton className="h-6 w-6 rounded-full" />
+                            <Skeleton className="h-4 w-1/4" />
+                        </div>
+                        <Skeleton className="h-12 w-full mt-2" />
+                    </CardHeader>
+                     <CardContent className="flex-grow">
+                         <Skeleton className="h-6 w-1/3" />
+                    </CardContent>
+                     <CardFooter className="flex justify-between items-center">
+                        <Skeleton className="h-6 w-1/4" />
+                        <Skeleton className="h-9 w-1/3" />
+                    </CardFooter>
+                 </Card>
+            ))
+        ) : (
+            topics.map((topic) => (
+            <Card key={topic.id} className="flex flex-col">
+                <CardHeader>
+                <CardTitle className="font-headline text-lg">{topic.title}</CardTitle>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2">
+                    <Avatar className="h-6 w-6">
+                        <AvatarImage src={topic.authorAvatar} alt={topic.author} />
+                        <AvatarFallback>{topic.author.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <span>{topic.author}</span>
                 </div>
-              <Button size="sm" asChild>
-                <Link href={`/topics/${topic.id}`}>View Topic</Link>
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
+                <CardDescription className="pt-2 line-clamp-3">{topic.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                    <Badge variant="outline">{topic.course}</Badge>
+                </CardContent>
+                <CardFooter className="flex justify-between items-center">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <MessageSquare className="h-4 w-4"/>
+                        <span>{topic.replies?.length || 0} Replies</span>
+                        <Badge 
+                        variant={topic.status === 'Closed' ? 'destructive' : topic.status === 'Reopened' ? 'secondary' : 'default'} 
+                        className="capitalize pointer-events-none"
+                        >
+                        {topic.status}
+                        </Badge>
+                    </div>
+                <Button size="sm" asChild>
+                    <Link href={`/topics/${topic.id}`}>View Topic</Link>
+                </Button>
+                </CardFooter>
+            </Card>
+            ))
+        )}
       </div>
     </div>
   );

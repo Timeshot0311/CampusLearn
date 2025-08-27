@@ -12,47 +12,12 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { Course, getCourses } from "@/services/course-service";
+import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const courses = [
-  {
-    id: "quantum-computing",
-    title: "Introduction to Quantum Computing",
-    description: "Learn the fundamentals of quantum mechanics and computation.",
-    image: "https://picsum.photos/600/400?random=1",
-    dataAiHint: "technology abstract",
-    progress: 75,
-    instructor: "Dr. Evelyn Reed",
-  },
-  {
-    id: "organic-chemistry",
-    title: "Advanced Organic Chemistry",
-    description: "Deep dive into complex molecular structures and reactions.",
-    image: "https://picsum.photos/600/400?random=2",
-    dataAiHint: "science laboratory",
-    progress: 40,
-    instructor: "Dr. Evelyn Reed",
-  },
-  {
-    id: "ancient-philosophy",
-    title: "History of Ancient Philosophy",
-    description: "Explore the thoughts of Socrates, Plato, and Aristotle.",
-    image: "https://picsum.photos/600/400?random=3",
-    dataAiHint: "history ancient",
-    progress: 90,
-    instructor: "Dr. Evelyn Reed",
-  },
-    {
-    id: "financial-system",
-    title: "The Modern Financial System",
-    description: "Understand the institutions and forces that shape our economy.",
-    image: "https://picsum.photos/600/400?random=4",
-    dataAiHint: "finance economy",
-    progress: 25,
-    instructor: "Dr. Samuel Green",
-  },
-];
-
-function CourseCard({ course }: { course: (typeof courses)[0] }) {
+function CourseCard({ course }: { course: Course }) {
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col">
       <CardHeader className="p-0">
@@ -84,13 +49,51 @@ function CourseCard({ course }: { course: (typeof courses)[0] }) {
 
 
 export default function CoursesPage() {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const fetchedCourses = await getCourses();
+        setCourses(fetchedCourses);
+      } catch (error) {
+        toast({
+          title: "Error Fetching Courses",
+          description: "Could not load course data.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCourses();
+  }, [toast]);
+
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-3xl font-bold font-headline">My Courses</h1>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {courses.map((course) => (
-            <CourseCard key={course.title} course={course} />
-        ))}
+        {loading ? (
+            Array.from({ length: 3 }).map((_, index) => (
+                <Card key={index}>
+                    <Skeleton className="w-full h-[180px]" />
+                    <CardContent className="p-4">
+                        <Skeleton className="h-6 w-3/4 mb-2" />
+                        <Skeleton className="h-4 w-1/2 mb-4" />
+                        <Skeleton className="h-4 w-full" />
+                    </CardContent>
+                    <CardFooter className="p-4 pt-0">
+                        <Skeleton className="h-9 w-full" />
+                    </CardFooter>
+                </Card>
+            ))
+        ) : (
+            courses.map((course) => (
+                <CourseCard key={course.id} course={course} />
+            ))
+        )}
       </div>
     </div>
   );

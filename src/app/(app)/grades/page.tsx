@@ -5,23 +5,31 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
-
-const grades = [
-  { assignment: "Problem Set 1", course: "Quantum Computing", grade: "A-", score: "92/100" },
-  { assignment: "Lab Report 1", course: "Organic Chemistry", grade: "B+", score: "88/100" },
-  { assignment: "Midterm Exam", course: "Ancient Philosophy", grade: "A", score: "95/100" },
-  { assignment: "Problem Set 2", course: "Quantum Computing", grade: "B", score: "85/100" },
-  { assignment: "Essay on Socrates", course: "Ancient Philosophy", grade: "A-", score: "91/100" },
-];
-
-const tutorGradebook = [
-    { student: "Alice Johnson", course: "Quantum Computing", assignment: "Problem Set 3", grade: "A" },
-    { student: "Bob Williams", course: "Organic Chemistry", assignment: "Lab Report 2", grade: "B+" },
-    { student: "Charlie Brown", course: "Ancient Philosophy", assignment: "Essay on Stoicism", grade: "A-" },
-    { student: "Diana Prince", course: "Quantum Computing", assignment: "Problem Set 3", grade: "B" },
-]
+import { Grade, TutorGradebookEntry, getStudentGrades, getTutorGradebook } from "@/services/grade-service";
+import { useEffect, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 function StudentGrades() {
+    const [grades, setGrades] = useState<Grade[]>([]);
+    const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
+    const { toast } = useToast();
+
+    useEffect(() => {
+        const fetchGrades = async () => {
+            try {
+                // In a real app, you'd pass a real user ID
+                const fetchedGrades = await getStudentGrades("student-id-placeholder");
+                setGrades(fetchedGrades);
+            } catch (error) {
+                toast({ title: "Error fetching grades.", variant: "destructive" });
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchGrades();
+    }, [toast]);
+
     return (
         <Card>
             <CardHeader>
@@ -39,16 +47,20 @@ function StudentGrades() {
                 </TableRow>
                 </TableHeader>
                 <TableBody>
-                {grades.map((grade) => (
-                    <TableRow key={grade.assignment}>
-                    <TableCell className="font-medium">{grade.assignment}</TableCell>
-                    <TableCell>{grade.course}</TableCell>
-                    <TableCell>
-                        <Badge variant="secondary">{grade.grade}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">{grade.score}</TableCell>
-                    </TableRow>
-                ))}
+                {loading ? (
+                    <TableRow><TableCell colSpan={4}>Loading grades...</TableCell></TableRow>
+                ) : (
+                    grades.map((grade) => (
+                        <TableRow key={grade.id}>
+                        <TableCell className="font-medium">{grade.assignment}</TableCell>
+                        <TableCell>{grade.course}</TableCell>
+                        <TableCell>
+                            <Badge variant="secondary">{grade.grade}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">{grade.score}</TableCell>
+                        </TableRow>
+                    ))
+                )}
                 </TableBody>
             </Table>
             </CardContent>
@@ -57,6 +69,26 @@ function StudentGrades() {
 }
 
 function TutorGradebook() {
+    const [gradebook, setGradebook] = useState<TutorGradebookEntry[]>([]);
+    const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
+    const { toast } = useToast();
+    
+    useEffect(() => {
+        const fetchGradebook = async () => {
+            try {
+                 // In a real app, you'd pass a real user ID
+                const fetchedGradebook = await getTutorGradebook("tutor-id-placeholder");
+                setGradebook(fetchedGradebook);
+            } catch (error) {
+                toast({ title: "Error fetching gradebook.", variant: "destructive" });
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchGradebook();
+    }, [toast]);
+
     return (
          <Card>
             <CardHeader>
@@ -74,16 +106,20 @@ function TutorGradebook() {
                 </TableRow>
                 </TableHeader>
                 <TableBody>
-                {tutorGradebook.map((grade) => (
-                    <TableRow key={grade.student + grade.assignment}>
-                    <TableCell className="font-medium">{grade.student}</TableCell>
-                    <TableCell>{grade.course}</TableCell>
-                    <TableCell>{grade.assignment}</TableCell>
-                    <TableCell className="text-right">
-                         <Badge variant="secondary">{grade.grade}</Badge>
-                    </TableCell>
-                    </TableRow>
-                ))}
+                {loading ? (
+                     <TableRow><TableCell colSpan={4}>Loading gradebook...</TableCell></TableRow>
+                ) : (
+                    gradebook.map((grade) => (
+                        <TableRow key={grade.id}>
+                        <TableCell className="font-medium">{grade.student}</TableCell>
+                        <TableCell>{grade.course}</TableCell>
+                        <TableCell>{grade.assignment}</TableCell>
+                        <TableCell className="text-right">
+                            <Badge variant="secondary">{grade.grade}</Badge>
+                        </TableCell>
+                        </TableRow>
+                    ))
+                )}
                 </TableBody>
             </Table>
             </CardContent>
