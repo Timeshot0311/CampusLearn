@@ -5,39 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { PlayCircle, FileText, CheckCircle, BookOpen, Youtube, File } from "lucide-react";
-import { Lesson, Module } from "@/services/course-service";
-import { useState } from "react";
-import { ClipboardCheck } from "lucide-react";
-
-
-const courseData = {
-    title: "Introduction to Quantum Computing",
-    instructor: "Dr. Evelyn Reed",
-    instructorAvatar: "https://i.pravatar.cc/150?u=evelyn",
-    description: "This course provides a comprehensive introduction to the principles of quantum computing. We will cover fundamental concepts such as qubits, superposition, and entanglement, and explore key quantum algorithms like Shor's and Grover's. No prior knowledge of quantum mechanics is required, but a strong foundation in linear algebra is recommended.",
-    modules: [
-        { 
-            id: "1",
-            title: "Module 1: The Quantum World", 
-            lessons: [
-                { id: "1", title: "Introduction to Quantum Mechanics", type: "youtube", content: "https://www.youtube.com/embed/I2G6_p0d2y8", completed: true },
-                { id: "2", title: "Qubits vs. Classical Bits", type: "video", content: "", duration: "15:52", completed: true },
-                { id: "3", title: "Reading: The Quantum Revolution", type: "article", content: "## The Quantum Leap...\n\nQuantum mechanics represents a fundamental shift in our understanding of the physical world. Unlike classical mechanics, which describes the motion of macroscopic objects, quantum mechanics deals with the behavior of matter and light on the atomic and subatomic scales.", completed: true },
-            ]
-        },
-        { 
-            id: "2",
-            title: "Module 2: Superposition and Entanglement", 
-            lessons: [
-                { id: "4", title: "Understanding Superposition", type: "video", content: "", duration: "18:21", completed: true },
-                { id: "5", title: "Spooky Action at a Distance: Entanglement", type: "video", content: "", duration: "22:05", completed: false },
-                { id: "6", title: "Quiz: Module 2 Concepts", type: "quiz", content: "", duration: "10 questions", completed: false },
-                 { id: "7", title: "Key Research Paper", type: "pdf", content: "https://example.com/quantum_paper.pdf", completed: false },
-            ]
-        },
-    ]
-};
+import { PlayCircle, FileText, CheckCircle, BookOpen, Youtube, File, ClipboardCheck } from "lucide-react";
+import { Lesson, Module, Course, getCourse } from "@/services/course-service";
+import { useState, useEffect } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 
 
 const LessonIcon = ({ type }: { type: Lesson['type'] }) => {
@@ -60,14 +32,16 @@ const LessonIcon = ({ type }: { type: Lesson['type'] }) => {
 const LessonContentDisplay = ({ lesson }: { lesson: Lesson }) => {
     switch (lesson.type) {
         case 'article':
-            // In a real app, you'd use a markdown renderer library
+            // In a real app, you'd use a markdown renderer library like 'react-markdown'
             return <div className="prose dark:prose-invert max-w-none p-4" dangerouslySetInnerHTML={{ __html: lesson.content.replace(/\n/g, '<br />') }} />;
         case 'youtube':
+            // Basic URL to embed URL conversion
+            const embedUrl = lesson.content.replace("watch?v=", "embed/");
             return (
                 <div className="aspect-video">
                     <iframe
                         className="w-full h-full"
-                        src={lesson.content}
+                        src={embedUrl}
                         title={lesson.title}
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
@@ -76,10 +50,12 @@ const LessonContentDisplay = ({ lesson }: { lesson: Lesson }) => {
             );
         case 'pdf':
             return (
-                <div className="p-4">
-                    <a href={lesson.content} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary underline">
-                        <FileText className="h-5 w-5"/>
-                        View PDF: {lesson.title}
+                <div className="p-4 flex flex-col items-center justify-center text-center gap-4 aspect-video bg-muted/50">
+                    <FileText className="h-16 w-16 text-muted-foreground"/>
+                    <h3 className="text-lg font-semibold">PDF Document</h3>
+                    <p className="text-muted-foreground">This lesson is a PDF file.</p>
+                    <a href={lesson.content} target="_blank" rel="noopener noreferrer">
+                        <Button>Download PDF</Button>
                     </a>
                 </div>
             );
@@ -89,11 +65,58 @@ const LessonContentDisplay = ({ lesson }: { lesson: Lesson }) => {
 };
 
 export default function CourseDetailPage({ params }: { params: { courseId: string } }) {
-  const [activeLesson, setActiveLesson] = useState<Lesson | null>(courseData.modules[0].lessons[0]);
+  const { toast } = useToast();
+  const [course, setCourse] = useState<Course | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
+
+  useEffect(() => {
+    const fetchCourse = async () => {
+        try {
+            setLoading(true);
+            const fetchedCourse = await getCourse(params.courseId);
+            setCourse(fetchedCourse);
+            if (fetchedCourse?.modules?.[0]?.lessons?.[0]) {
+                setActiveLesson(fetchedCourse.modules[0].lessons[0]);
+            }
+        } catch (error) {
+            toast({ title: "Error fetching course data", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchCourse();
+  }, [params.courseId, toast]);
+
 
   const handleLessonClick = (lesson: Lesson) => {
     setActiveLesson(lesson);
   };
+
+  if (loading) {
+      return (
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="md:col-span-2">
+            <Skeleton className="w-full aspect-video" />
+            <div className="p-6 space-y-4">
+                <Skeleton className="h-8 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <div className="pt-6 space-y-4">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                </div>
+            </div>
+          </div>
+          <div>
+            <Skeleton className="h-64 w-full" />
+          </div>
+        </div>
+      )
+  }
+  
+  if (!course) {
+      return <p>Course not found.</p>
+  }
 
   return (
     <div className="grid md:grid-cols-3 gap-6">
@@ -102,18 +125,18 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
             {activeLesson ? (
                 <LessonContentDisplay lesson={activeLesson} />
             ) : (
-                <div className="p-8 text-center text-muted-foreground">Select a lesson to begin.</div>
+                <div className="p-8 text-center text-muted-foreground aspect-video flex items-center justify-center">Select a lesson to begin.</div>
             )}
             
             <CardHeader>
-                <CardTitle className="text-3xl font-headline">{activeLesson?.title || courseData.title}</CardTitle>
-                {activeLesson ? null : <CardDescription>{courseData.description}</CardDescription> }
+                <CardTitle className="text-3xl font-headline">{activeLesson?.title || course.title}</CardTitle>
+                {activeLesson ? null : <CardDescription>{course.description}</CardDescription> }
             </CardHeader>
             <CardContent>
                 <h2 className="text-2xl font-semibold font-headline mb-4">Course Content</h2>
-                 <Accordion type="single" collapsible className="w-full" defaultValue="item-0">
-                    {courseData.modules.map((module, index) => (
-                        <AccordionItem value={`item-${index}`} key={module.id}>
+                 <Accordion type="single" collapsible className="w-full" defaultValue={course.modules.length > 0 ? course.modules[0].id : undefined}>
+                    {course.modules.map((module, index) => (
+                        <AccordionItem value={module.id} key={module.id}>
                             <AccordionTrigger className="text-lg font-semibold">{module.title}</AccordionTrigger>
                             <AccordionContent>
                                 <ul className="space-y-1">
@@ -146,10 +169,10 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
         <Card>
             <CardHeader className="items-center text-center">
                 <Avatar className="h-24 w-24 mb-2">
-                    <AvatarImage src={courseData.instructorAvatar} alt={courseData.instructor} />
-                    <AvatarFallback>{courseData.instructor.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={`https://i.pravatar.cc/150?u=${course.instructor.replace(/\s+/g, '')}`} alt={course.instructor} />
+                    <AvatarFallback>{course.instructor.charAt(0)}</AvatarFallback>
                 </Avatar>
-                <CardTitle className="font-headline">{courseData.instructor}</CardTitle>
+                <CardTitle className="font-headline">{course.instructor}</CardTitle>
                 <CardDescription>Lead Instructor</CardDescription>
             </CardHeader>
             <CardContent>
