@@ -1,16 +1,80 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { updateUser } from "@/services/user-service";
+import { updateUser, User } from "@/services/user-service";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Loader2 } from "lucide-react";
+import { Loader2, MessageSquare } from "lucide-react";
+import { getTopics, Topic } from "@/services/topic-service";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+
+function UserTopics({ user }: { user: User }) {
+    const [topics, setTopics] = useState<Topic[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchUserTopics = async () => {
+            const allTopics = await getTopics();
+            setTopics(allTopics.filter(t => t.author === user.name));
+            setLoading(false);
+        };
+        fetchUserTopics();
+    }, [user.name]);
+
+    return (
+        <Card className="mt-6">
+            <CardHeader>
+                <CardTitle>My Help Topics</CardTitle>
+                <CardDescription>A history of all the topics you have created.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {loading ? (
+                    <p>Loading topics...</p>
+                ) : topics.length > 0 ? (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Topic</TableHead>
+                                <TableHead>Course</TableHead>
+                                <TableHead>Replies</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {topics.map(topic => (
+                                <TableRow key={topic.id}>
+                                    <TableCell className="font-medium">{topic.title}</TableCell>
+                                    <TableCell>{topic.course}</TableCell>
+                                    <TableCell>{topic.replies?.length || 0}</TableCell>
+                                    <TableCell><Badge variant={topic.status === 'Closed' ? 'destructive' : 'default'}>{topic.status}</Badge></TableCell>
+                                    <TableCell className="text-right">
+                                        <Button asChild variant="outline" size="sm">
+                                            <Link href={`/topics/${topic.id}`}>View</Link>
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                ) : (
+                    <div className="text-center text-muted-foreground py-6">
+                        <MessageSquare className="mx-auto h-12 w-12" />
+                        <p className="mt-4">You have not created any topics yet.</p>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    )
+}
 
 export default function ProfilePage() {
   const { user, loading: authLoading } = useAuth();
@@ -73,6 +137,8 @@ export default function ProfilePage() {
                 </form>
             </CardContent>
         </Card>
+
+        {user.role === 'student' && <UserTopics user={user} />}
     </div>
   );
 }

@@ -96,7 +96,7 @@ export default function TopicsPage() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
-  const isStudent = user.role === "student";
+  const canCreateTopic = user.role === "student" || user.role === "tutor" || user.role === "lecturer";
 
   useEffect(() => {
     const fetchTopics = async () => {
@@ -125,7 +125,7 @@ export default function TopicsPage() {
         };
         const newTopicId = await addTopic(topicToAdd);
         setTopics([{ ...topicToAdd, id: newTopicId }, ...topics]);
-        toast({ title: "Topic Created!", description: "Your request for help has been posted." });
+        toast({ title: "Topic Created!", description: "Your new topic has been posted." });
     } catch (error) {
         toast({ title: "Error creating topic", variant: "destructive" });
     }
@@ -135,7 +135,7 @@ export default function TopicsPage() {
     <div className="flex flex-col gap-6">
        <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold font-headline">Help Topics</h1>
-            {isStudent && <CreateTopicDialog onSave={handleCreateTopic} />}
+            {canCreateTopic && <CreateTopicDialog onSave={handleCreateTopic} />}
        </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

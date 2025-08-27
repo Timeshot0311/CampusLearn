@@ -43,10 +43,10 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
   const [uploading, setUploading] = useState(false);
 
   const isTutorOrLecturerOrAdmin = user.role === "tutor" || user.role === "lecturer" || user.role === "admin";
-  const isTutor = user.role === "tutor";
+  const isTutorOrLecturer = user.role === "tutor" || user.role === "lecturer";
   const isClosed = topic?.status === "Closed";
   
-  const canTutorReply = isTutor ? user.assignedCourses?.includes(topic?.course || '') : true;
+  const canTutorReply = isTutorOrLecturer ? user.assignedCourses?.includes(topic?.course || '') : true;
   const canReply = (!isClosed && (user.role === 'student' || canTutorReply)) || isTutorOrLecturerOrAdmin;
 
   const isSubscribed = topic?.subscribers?.includes(user.id);
@@ -261,17 +261,17 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
              <div className="w-full relative">
                 <Textarea 
                     placeholder={
-                        isClosed && user.role === 'student' ? "This topic is closed for students." :
-                        !canReply && isTutor ? `You are not assigned to the "${topic.course}" course.` :
+                        isClosed ? "This topic is closed." :
+                        !canReply && isTutorOrLecturer ? `You are not assigned to the "${topic.course}" course and cannot reply.` :
                         "Type your message here..."
                     }
                     value={newReply}
                     onChange={(e) => setNewReply(e.target.value)}
                     rows={4}
                     className="pr-24"
-                    disabled={!canReply || replying}
+                    disabled={!canReply || replying || isClosed}
                 />
-                <Button className="absolute bottom-3 right-3" size="sm" onClick={handleSendReply} disabled={!newReply.trim() || !canReply || replying}>
+                <Button className="absolute bottom-3 right-3" size="sm" onClick={handleSendReply} disabled={!newReply.trim() || !canReply || replying || isClosed}>
                     {replying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {replying ? "Sending..." : "Send"}
                     {!replying && <Send className="ml-2 h-4 w-4"/>}
