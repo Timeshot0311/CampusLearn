@@ -1,6 +1,7 @@
 
+
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -40,17 +41,18 @@ type Topic = {
   course: string;
   author: string;
   authorAvatar: string;
-  replies: number;
+  replies: any[]; // Changed to any[] to store full reply objects
   status: TopicStatus;
+  materials: any[];
 };
 
 const initialTopics: Topic[] = [
-  { id: "1", title: "Confused about Quantum Tunneling", description: "Can someone explain the probability calculation for a particle to tunnel through a barrier? I'm not getting it.", course: "Quantum Computing", author: "Alex Doe", authorAvatar: "https://i.pravatar.cc/150?u=alex", replies: 3, status: "Open" },
-  { id: "2", title: "Help with SN1 vs. SN2 Reactions", description: "What are the key factors to decide if a reaction is SN1 or SN2? The solvent effects are particularly tricky for me.", course: "Organic Chemistry", author: "Charlie Brown", authorAvatar: "https://i.pravatar.cc/150?u=charlie", replies: 5, status: "Open" },
-  { id: "3", title: "Aristotle's Four Causes", description: "I've read the chapter, but I'm looking for more examples of the material, formal, efficient, and final causes. The textbook is a bit dry.", course: "Ancient Philosophy", author: "Bob Williams", authorAvatar: "https://i.pravatar.cc/150?u=bob", replies: 2, status: "Closed" },
+  { id: "1", title: "Confused about Quantum Tunneling", description: "Can someone explain the probability calculation for a particle to tunnel through a barrier? I'm not getting it.", course: "Quantum Computing", author: "Alex Doe", authorAvatar: "https://i.pravatar.cc/150?u=alex", replies: [{}, {}, {}], status: "Open", materials: [{},{},{}] },
+  { id: "2", title: "Help with SN1 vs. SN2 Reactions", description: "What are the key factors to decide if a reaction is SN1 or SN2? The solvent effects are particularly tricky for me.", course: "Organic Chemistry", author: "Charlie Brown", authorAvatar: "https://i.pravatar.cc/150?u=charlie", replies: [{},{},{},{},{}], status: "Open", materials: [] },
+  { id: "3", title: "Aristotle's Four Causes", description: "I've read the chapter, but I'm looking for more examples of the material, formal, efficient, and final causes. The textbook is a bit dry.", course: "Ancient Philosophy", author: "Bob Williams", authorAvatar: "https://i.pravatar.cc/150?u=bob", replies: [{},{}], status: "Closed", materials: [] },
 ];
 
-function CreateTopicDialog({ onSave }: { onSave: (topic: Omit<Topic, 'id' | 'author' | 'authorAvatar' | 'replies' | 'status'>) => void }) {
+function CreateTopicDialog({ onSave }: { onSave: (topic: Omit<Topic, 'id' | 'author' | 'authorAvatar' | 'replies' | 'status' | 'materials'>) => void }) {
     const [open, setOpen] = useState(false);
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -109,20 +111,47 @@ function CreateTopicDialog({ onSave }: { onSave: (topic: Omit<Topic, 'id' | 'aut
 }
 
 export default function TopicsPage() {
-  const [topics, setTopics] = useState(initialTopics);
+  const [topics, setTopics] = useState<Topic[]>(initialTopics);
   const { user } = useAuth();
   const isStudent = user.role === "student";
 
-  const handleCreateTopic = (newTopic: Omit<Topic, 'id' | 'author' | 'authorAvatar' | 'replies' | 'status'>) => {
+  useEffect(() => {
+    const storedTopics = localStorage.getItem("topics");
+    if (storedTopics) {
+      setTopics(JSON.parse(storedTopics));
+    } else {
+      localStorage.setItem("topics", JSON.stringify(initialTopics));
+    }
+  }, []);
+
+  useEffect(() => {
+    // This will listen for changes in other tabs
+    const handleStorageChange = () => {
+        const storedTopics = localStorage.getItem("topics");
+        if (storedTopics) {
+            setTopics(JSON.parse(storedTopics));
+        }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+
+
+  const handleCreateTopic = (newTopic: Omit<Topic, 'id' | 'author' | 'authorAvatar' | 'replies' | 'status' | 'materials'>) => {
     const topic: Topic = {
         ...newTopic,
         id: (topics.length + 1).toString(),
         author: user.name,
         authorAvatar: user.avatar,
-        replies: 0,
+        replies: [],
         status: "Open",
+        materials: []
     };
-    setTopics(prev => [topic, ...prev]);
+    const newTopics = [topic, ...topics];
+    setTopics(newTopics);
+    localStorage.setItem("topics", JSON.stringify(newTopics));
   };
   
   return (
@@ -152,10 +181,10 @@ export default function TopicsPage() {
             <CardFooter className="flex justify-between items-center">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <MessageSquare className="h-4 w-4"/>
-                    <span>{topic.replies} Replies</span>
+                    <span>{topic.replies.length} Replies</span>
                     <Badge 
-                      variant={topic.status === 'Open' ? 'default' : topic.status === 'Reopened' ? 'secondary' : 'destructive'} 
-                      className={cn("capitalize", isStudent && "pointer-events-none")}
+                      variant={topic.status === 'Closed' ? 'destructive' : topic.status === 'Reopened' ? 'secondary' : 'default'} 
+                      className="capitalize pointer-events-none"
                     >
                       {topic.status}
                     </Badge>
@@ -172,3 +201,5 @@ export default function TopicsPage() {
 }
 
 const Fallback = AvatarFallback;
+
+    

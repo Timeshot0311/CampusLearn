@@ -1,6 +1,7 @@
 
+
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -88,6 +89,30 @@ const topicsData = {
 
 type TopicStatus = "Open" | "Closed" | "Reopened";
 
+function getTopicFromStorage(topicId: string) {
+    if (typeof window === 'undefined') return topicsData[topicId as keyof typeof topicsData] || topicsData["1"];
+    const storedTopics = localStorage.getItem('topics');
+    if (storedTopics) {
+        const topics = JSON.parse(storedTopics);
+        return topics.find((t: any) => t.id === topicId) || topicsData[topicId as keyof typeof topicsData] || topicsData["1"];
+    }
+    return topicsData[topicId as keyof typeof topicsData] || topicsData["1"];
+}
+
+function updateTopicInStorage(topic: any) {
+    if (typeof window === 'undefined') return;
+    const storedTopics = localStorage.getItem('topics');
+    if (storedTopics) {
+        const topics = JSON.parse(storedTopics);
+        const index = topics.findIndex((t: any) => t.id === topic.id);
+        if (index !== -1) {
+            topics[index] = topic;
+            localStorage.setItem('topics', JSON.stringify(topics));
+        }
+    }
+}
+
+
 function MaterialIcon({ type }: { type: string }) {
     if (type === 'pdf') return <FileText className="h-5 w-5 text-muted-foreground" />;
     if (type === 'video') return <Video className="h-5 w-5 text-muted-foreground" />;
@@ -99,13 +124,12 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
   const { user } = useAuth();
   const { toast } = useToast();
   
-  const initialData = useMemo(() => topicsData[params.topicId as keyof typeof topicsData] || topicsData["1"], [params.topicId]);
-  const [topicData, setTopicData] = useState(initialData);
+  const [topicData, setTopicData] = useState(() => getTopicFromStorage(params.topicId));
 
   const [newReply, setNewReply] = useState("");
-  const isTutorOrLecturer = user.role === "tutor" || user.role === "lecturer";
+  const isTutorOrLecturerOrAdmin = user.role === "tutor" || user.role === "lecturer" || user.role === "admin";
   const isClosed = topicData.status === "Closed";
-  const canReply = !isClosed || user.role !== 'student';
+  const canReply = !isClosed || isTutorOrLecturerOrAdmin;
 
 
   const handleSendReply = () => {
@@ -118,11 +142,14 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
         text: newReply,
         timestamp: "Just now",
     };
+    
+    const updatedTopic = {
+        ...topicData,
+        replies: [...topicData.replies, reply],
+    };
 
-    setTopicData(prevData => ({
-        ...prevData,
-        replies: [...prevData.replies, reply],
-    }));
+    setTopicData(updatedTopic);
+    updateTopicInStorage(updatedTopic);
 
     setNewReply("");
     toast({ title: "Reply posted!" });
@@ -133,7 +160,9 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
   }
 
   const handleStatusChange = (status: TopicStatus) => {
-    setTopicData(prevData => ({ ...prevData, status }));
+    const updatedTopic = { ...topicData, status };
+    setTopicData(updatedTopic);
+    updateTopicInStorage(updatedTopic);
     toast({ title: "Topic Status Updated", description: `The topic has been marked as ${status}.`});
   }
 
@@ -145,10 +174,12 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
         name: file.name,
         type: file.type.split('/')[0] || 'file' // pdf, video, audio etc.
       };
-      setTopicData(prevData => ({
-        ...prevData,
-        materials: [...prevData.materials, newMaterial]
-      }));
+      const updatedTopic = {
+        ...topicData,
+        materials: [...topicData.materials, newMaterial]
+      };
+      setTopicData(updatedTopic);
+      updateTopicInStorage(updatedTopic);
       toast({
         title: "File Uploaded!",
         description: `${file.name} has been added to the learning materials.`
@@ -172,11 +203,11 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <div className="flex items-center gap-2 cursor-pointer">
-                            <Badge variant={topicData.status === 'Open' ? 'default' : topicData.status === 'Reopened' ? 'secondary' : 'destructive'} className="capitalize">{topicData.status}</Badge>
-                            {isTutorOrLecturer && <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>}
+                            <Badge variant={topicData.status === 'Closed' ? 'destructive' : topicData.status === 'Reopened' ? 'secondary' : 'default'} className="capitalize">{topicData.status}</Badge>
+                            {isTutorOrLecturerOrAdmin && <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>}
                         </div>
                     </DropdownMenuTrigger>
-                     {isTutorOrLecturer && (
+                     {isTutorOrLecturerOrAdmin && (
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleStatusChange("Open")} className="text-green-600 focus:text-green-600">Mark as Open</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleStatusChange("Reopened")} className="text-blue-600 focus:text-blue-600">Mark as Reopened</DropdownMenuItem>
@@ -255,7 +286,7 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
              {topicData.materials.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">No materials uploaded yet.</p>
              )}
-             {isTutorOrLecturer && (
+             {isTutorOrLecturerOrAdmin && (
                 <div className="pt-4">
                     <Label htmlFor="file-upload" className="w-full text-sm font-medium text-primary cursor-pointer inline-block p-4 border-2 border-dashed border-primary/50 rounded-lg text-center hover:bg-primary/10">
                         <div className="flex items-center justify-center gap-2">
@@ -272,3 +303,5 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
     </div>
   );
 }
+
+    
