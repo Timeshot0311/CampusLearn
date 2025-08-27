@@ -37,23 +37,23 @@ import { cn } from "@/lib/utils";
 
 const studentNav = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
-  { href: "#", icon: BookOpen, label: "My Courses" },
-  { href: "#", icon: ClipboardCheck, label: "Assignments" },
-  { href: "#", icon: GraduationCap, label: "Grades" },
+  { href: "/courses", icon: BookOpen, label: "My Courses" },
+  { href: "/assignments", icon: ClipboardCheck, label: "Assignments" },
+  { href: "/grades", icon: GraduationCap, label: "Grades" },
 ];
 
 const tutorNav = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
-  { href: "#", icon: BookOpen, label: "Courses" },
-  { href: "#", icon: ClipboardCheck, label: "Submissions" },
-  { href: "#", icon: LineChart, label: "Analytics" },
+  { href: "/courses", icon: BookOpen, label: "Courses" },
+  { href: "/assignments", icon: ClipboardCheck, label: "Submissions" },
+  { href: "/analytics", icon: LineChart, label: "Analytics" },
 ];
 
 const adminNav = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
-  { href: "#", icon: Users, label: "User Management" },
-  { href: "#", icon: Package, label: "Course Management" },
-  { href: "#", icon: LineChart, label: "System Analytics" },
+  { href: "/users", icon: Users, label: "User Management" },
+  { href: "/courses", icon: Package, label: "Course Management" },
+  { href: "/analytics", icon: LineChart, label: "System Analytics" },
 ];
 
 const navItems = {
