@@ -13,9 +13,93 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Course, getCourses } from "@/services/course-service";
+import { Course, getCourses, addCourse } from "@/services/course-service";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { PlusCircle } from "lucide-react";
+
+
+function CourseDialog({ onSave }: { onSave: (course: Omit<Course, 'id' | 'modules' | 'progress' | 'published'>) => void; }) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+  const { user } = useAuth();
+
+  const handleSave = () => {
+    if (!title || !description) {
+        toast({ title: "Validation Error", description: "All fields are required.", variant: "destructive"});
+        return;
+    }
+    
+    const courseData: Omit<Course, 'id' | 'modules' | 'progress'| 'published'> = {
+        title,
+        description,
+        instructor: user!.name,
+        image: `https://picsum.photos/seed/${title.replace(/\s+/g, '')}/600/300`,
+        dataAiHint: "education learning",
+        ownerId: user!.id,
+    };
+
+    onSave(courseData);
+    setOpen(false);
+  };
+  
+  useEffect(() => {
+    if (!open) {
+        setTitle("");
+        setDescription("");
+    }
+  }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create Course
+        </Button>
+    </DialogTrigger>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Create New Course</DialogTitle>
+          <DialogDescription>
+            Enter the details for the new course. You can add content after creation.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="title">Course Title</Label>
+            <Input id="title" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Introduction to AI" />
+          </div>
+           <div className="grid gap-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea id="description" value={description} onChange={e => setDescription(e.target.value)} placeholder="A brief summary of the course content..." />
+          </div>
+        </div>
+        <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+          <Button onClick={handleSave}>Create Course</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 
 function CourseCard({ course }: { course: Course }) {
   return (
@@ -40,7 +124,9 @@ function CourseCard({ course }: { course: Course }) {
       </CardContent>
       <CardFooter className="p-4 pt-0">
         <Button size="sm" className="w-full" asChild>
-            <Link href={`/courses/${course.id}`}>Continue Learning</Link>
+            <Link href={`/courses/${course.id}`}>
+              {course.progress > 0 ? "Continue Learning" : "Start Course"}
+            </Link>
         </Button>
       </CardFooter>
     </Card>
@@ -52,6 +138,8 @@ export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isLecturerOrAdmin = user?.role === 'lecturer' || user?.role === 'admin';
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -70,10 +158,29 @@ export default function CoursesPage() {
     };
     fetchCourses();
   }, [toast]);
+  
+  const handleCreateCourse = async (courseData: Omit<Course, 'id' | 'modules' | 'progress'| 'published'>) => {
+    try {
+        const courseToAdd: Omit<Course, 'id'> = {
+            ...courseData,
+            modules: [],
+            progress: 0,
+            published: false,
+        };
+        const newCourseId = await addCourse(courseToAdd);
+        setCourses([...courses, { ...courseToAdd, id: newCourseId }]);
+        toast({ title: "Course created successfully!"});
+    } catch (error: any) {
+        toast({ title: "Error creating course", description: error.message, variant: "destructive" });
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-3xl font-bold font-headline">My Courses</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold font-headline">Courses</h1>
+        {isLecturerOrAdmin && <CourseDialog onSave={handleCreateCourse} />}
+      </div>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {loading ? (
             Array.from({ length: 3 }).map((_, index) => (
