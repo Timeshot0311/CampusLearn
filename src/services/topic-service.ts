@@ -129,11 +129,13 @@ export async function getNotifications(userId: string): Promise<Notification[]> 
     const notificationsCollection = collection(db, 'notifications');
     const q = query(
         notificationsCollection, 
-        where("userId", "==", userId),
-        orderBy("timestamp", "desc")
+        where("userId", "==", userId)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+    const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+    
+    // Sort on the client to avoid needing a composite index
+    return notifications.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
 
 export async function markNotificationAsRead(notificationId: string): Promise<void> {
