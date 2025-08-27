@@ -90,13 +90,13 @@ const topicsData = {
 type TopicStatus = "Open" | "Closed" | "Reopened";
 
 function getTopicFromStorage(topicId: string) {
-    if (typeof window === 'undefined') return topicsData[topicId as keyof typeof topicsData] || topicsData["1"];
+    if (typeof window === 'undefined') return null;
     const storedTopics = localStorage.getItem('topics');
     if (storedTopics) {
         const topics = JSON.parse(storedTopics);
-        return topics.find((t: any) => t.id === topicId) || topicsData[topicId as keyof typeof topicsData] || topicsData["1"];
+        return topics.find((t: any) => t.id === topicId) || topicsData[topicId as keyof typeof topicsData] || null;
     }
-    return topicsData[topicId as keyof typeof topicsData] || topicsData["1"];
+    return topicsData[topicId as keyof typeof topicsData] || null;
 }
 
 function updateTopicInStorage(topic: any) {
@@ -108,6 +108,7 @@ function updateTopicInStorage(topic: any) {
         if (index !== -1) {
             topics[index] = topic;
             localStorage.setItem('topics', JSON.stringify(topics));
+            window.dispatchEvent(new Event('storage'));
         }
     }
 }
@@ -124,11 +125,15 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
   const { user } = useAuth();
   const { toast } = useToast();
   
-  const [topicData, setTopicData] = useState(() => getTopicFromStorage(params.topicId));
+  const [topicData, setTopicData] = useState<any>(null);
+
+  useEffect(() => {
+    setTopicData(getTopicFromStorage(params.topicId));
+  }, [params.topicId]);
 
   const [newReply, setNewReply] = useState("");
   const isTutorOrLecturerOrAdmin = user.role === "tutor" || user.role === "lecturer" || user.role === "admin";
-  const isClosed = topicData.status === "Closed";
+  const isClosed = topicData?.status === "Closed";
   const canReply = !isClosed || isTutorOrLecturerOrAdmin;
 
 
@@ -187,6 +192,10 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
     }
   };
 
+  if (!topicData) {
+    return <div>Loading topic...</div>;
+  }
+
 
   return (
     <div className="grid md:grid-cols-3 gap-6">
@@ -229,7 +238,7 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
           <CardContent className="pt-6">
             <h2 className="text-xl font-semibold font-headline mb-4">Discussion</h2>
             <div className="space-y-6">
-              {topicData.replies.map((reply, index) => (
+              {topicData.replies.map((reply: any, index: number) => (
                 <div key={index} className="flex items-start gap-4">
                   <Avatar>
                     <AvatarImage src={reply.authorAvatar} alt={reply.author} />
@@ -272,7 +281,7 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
             <CardDescription>Resources uploaded for this topic.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-             {topicData.materials.map(material => (
+             {topicData.materials.map((material: any) => (
                 <div key={material.name} className="flex items-center p-3 rounded-md border justify-between">
                     <div className="flex items-center gap-3 truncate">
                         <MaterialIcon type={material.type} />
@@ -304,4 +313,5 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
   );
 }
 
+    
     
