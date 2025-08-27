@@ -2,32 +2,19 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    
-    // Helper functions
-    function isAuth() {
-      return request.auth != null;
-    }
-    
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    // Allow read access to all files by anyone. 
-    // This is a simple rule for now; you might want to make it more restrictive.
+    // Allow read access to all files
     match /{allPaths=**} {
       allow read;
     }
 
-    // Allow users to write to their own folder in /users/{userId}/*
-    match /users/{userId}/{allPaths=**} {
-      allow write: if isAuth() && isOwner(userId);
+    // Allow uploads for authenticated users in a 'courses' directory
+    match /courses/{courseId}/{allPaths=**} {
+      allow write: if request.auth != null;
     }
-    
-    // Allow tutors/lecturers/admins to upload to /topics/{topicId}/*
+
+    // Allow uploads for authenticated users in a 'topics' directory
     match /topics/{topicId}/{allPaths=**} {
-      // In a real app, you'd verify the user's role here, similar to Firestore rules.
-      // For simplicity, we'll just check if they are authenticated.
-      allow write: if isAuth(); 
+      allow write: if request.auth != null;
     }
   }
 }
