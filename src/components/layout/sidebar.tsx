@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -17,21 +18,10 @@ import { useAuth } from "@/hooks/use-auth";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import type { Role } from "@/hooks/use-auth";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { usePathname } from 'next/navigation';
 import { cn } from "@/lib/utils";
 
@@ -74,7 +64,7 @@ const navItems = {
 };
 
 function NavContent() {
-  const { user, roles, setUserRole } = useAuth();
+  const { user } = useAuth();
   const pathname = usePathname();
 
   return (
@@ -88,7 +78,7 @@ function NavContent() {
           <span className="sr-only">Toggle notifications</span>
         </Button>
       </div>
-      <div className="flex-1">
+      <div className="flex-1 overflow-auto py-2">
         <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
           {(navItems[user.role] || []).map((item) => (
              <Link
@@ -105,30 +95,6 @@ function NavContent() {
               </Link>
           ))}
         </nav>
-      </div>
-      <div className="mt-auto p-4">
-        <Card>
-          <CardHeader className="p-2 pt-0 md:p-4">
-            <CardTitle className="font-headline text-lg">Role Switcher</CardTitle>
-            <CardDescription>
-              Simulate different user roles.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-2 pt-0 md:p-4 md:pt-0">
-            <Select onValueChange={(value) => setUserRole(value as Role)} defaultValue={user.role}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a role" />
-              </SelectTrigger>
-              <SelectContent>
-                {roles.map((role) => (
-                  <SelectItem key={role} value={role} className="capitalize">
-                    {role.charAt(0).toUpperCase() + role.slice(1)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

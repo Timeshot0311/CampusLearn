@@ -1,64 +1,57 @@
+
 "use client";
 
-import { createContext, useContext, useState, ReactNode, useMemo } from 'react';
-
-export type Role = 'student' | 'tutor' | 'admin' | 'lecturer';
-
-type User = {
-  name: string;
-  email: string;
-  role: Role;
-  avatar: string;
-};
-
-const users: Record<Role, User> = {
-  student: {
-    name: 'Alex Doe',
-    email: 'alex.doe@campus.edu',
-    role: 'student',
-    avatar: 'https://i.pravatar.cc/150?u=alex',
-  },
-  tutor: {
-    name: 'Dr. Evelyn Reed',
-    email: 'e.reed@campus.edu',
-    role: 'tutor',
-    avatar: 'https://i.pravatar.cc/150?u=evelyn',
-  },
-  lecturer: {
-    name: 'Dr. Samuel Green',
-    email: 's.green@campus.edu',
-    role: 'lecturer',
-    avatar: 'https://i.pravatar.cc/150?u=samuel'
-  },
-  admin: {
-    name: 'Sam Wallace',
-    email: 's.wallace@campus.edu',
-    role: 'admin',
-    avatar: 'https://i.pravatar.cc/150?u=sam',
-  },
-};
+import { createContext, useContext, useState, ReactNode, useMemo, useEffect } from 'react';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import type { User } from '@/services/user-service';
 
 interface AuthContextType {
-  user: User;
-  setUserRole: (role: Role) => void;
-  roles: Role[];
+  user: User | null;
+  loading: boolean;
+  // Kept for type compatibility in sidebar for now, but is unused.
+  roles: string[]; 
+  setUserRole: (role: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [currentRole, setCurrentRole] = useState<Role>('student');
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const setUserRole = (role: Role) => {
-    if (users[role]) {
-      setCurrentRole(role);
-    }
-  };
-  
-  const user = users[currentRole];
-  const roles = Object.keys(users) as Role[];
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser && db) {
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          setUser({ id: userDocSnap.id, ...userDocSnap.data() } as User);
+        } else {
+          // Handle case where user exists in Auth but not Firestore
+          setUser(null); 
+        }
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
 
-  const value = useMemo(() => ({ user, setUserRole, roles }), [user, roles]);
+    return () => unsubscribe();
+  }, []);
+
+  const value = useMemo(() => ({ 
+      user, 
+      loading,
+      roles: ['student', 'tutor', 'lecturer', 'admin'], // Dummy data, not used
+      setUserRole: () => {} // Dummy function, not used
+    }), [user, loading]);
+
+  if (loading) {
+    // You can return a global loader here if you want
+    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+  }
 
   return (
     <AuthContext.Provider value={value}>
@@ -71,6 +64,21 @@ export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
+  }
+  // This provides a fallback user object to prevent the app from crashing on logout
+  // before a redirect can happen. Components expecting a user will get a dummy object.
+  if (!context.user) {
+      return {
+          ...context,
+          user: {
+              id: '',
+              name: 'Guest',
+              email: '',
+              role: 'student',
+              status: 'Inactive',
+              avatar: ''
+          }
+      };
   }
   return context;
 }
