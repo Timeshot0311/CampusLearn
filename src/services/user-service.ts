@@ -12,6 +12,7 @@ export type User = {
     role: Role;
     status: "Active" | "Inactive";
     avatar: string;
+    assignedCourses?: string[];
 };
 
 export async function getUsers(): Promise<User[]> {

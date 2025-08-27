@@ -42,16 +42,20 @@ import {
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { addUser, deleteUser, getUsers, updateUser, User } from "@/services/user-service";
+import { getCourses, Course } from "@/services/course-service";
+import { MultiSelect } from "@/components/ui/multi-select";
 
-function UserDialog({ onSave, user, children }: { onSave: (user: User, password?: string) => void; user?: User; children: React.ReactNode }) {
+function UserDialog({ onSave, user, courses, children }: { onSave: (user: User, password?: string) => void; user?: User; courses: Course[], children: React.ReactNode }) {
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [role, setRole] = useState<User['role']>(user?.role || "student");
   const [password, setPassword] = useState("");
+  const [assignedCourses, setAssignedCourses] = useState<string[]>(user?.assignedCourses || []);
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
 
   const isEditing = !!user;
+  const courseOptions = courses.map(c => ({ value: c.id, label: c.title }));
 
   const handleSave = () => {
     if (!name || !email) {
@@ -69,7 +73,8 @@ function UserDialog({ onSave, user, children }: { onSave: (user: User, password?
         email,
         role,
         status: user?.status || "Active",
-        avatar: user?.avatar || `https://i.pravatar.cc/150?u=${name.split(' ')[0]}`
+        avatar: user?.avatar || `https://i.pravatar.cc/150?u=${name.split(' ')[0]}`,
+        assignedCourses: role === 'tutor' ? assignedCourses : []
     };
 
     onSave(userData, isEditing ? undefined : password);
@@ -82,11 +87,13 @@ function UserDialog({ onSave, user, children }: { onSave: (user: User, password?
         setName(user.name);
         setEmail(user.email);
         setRole(user.role);
+        setAssignedCourses(user.assignedCourses || []);
         setPassword("");
       } else {
           setName("");
           setEmail("");
           setRole("student");
+          setAssignedCourses([]);
           setPassword("");
       }
     }
@@ -126,6 +133,18 @@ function UserDialog({ onSave, user, children }: { onSave: (user: User, password?
               </SelectContent>
             </Select>
           </div>
+           {role === 'tutor' && (
+             <div className="grid grid-cols-4 items-start gap-4">
+              <Label htmlFor="courses" className="text-right pt-2">Courses</Label>
+              <MultiSelect
+                className="col-span-3"
+                options={courseOptions}
+                selected={assignedCourses}
+                onChange={setAssignedCourses}
+                placeholder="Assign courses..."
+              />
+            </div>
+           )}
           {!isEditing && (
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="password" className="text-right">Password</Label>
@@ -168,22 +187,25 @@ function DeleteUserAlert({ userId, onDelete }: { userId: string, onDelete: (id: 
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
-  const fetchUsers = async () => {
+  const fetchData = async () => {
+    setLoading(true);
     try {
-        const userList = await getUsers();
+        const [userList, courseList] = await Promise.all([getUsers(), getCourses()]);
         setUsers(userList);
+        setCourses(courseList);
     } catch(error) {
-        toast({ title: "Error fetching users", description: "Could not load user data from the database.", variant: "destructive" });
+        toast({ title: "Error fetching data", description: "Could not load user and course data.", variant: "destructive" });
     } finally {
         setLoading(false);
     }
   }
 
   useEffect(() => {
-    fetchUsers();
+    fetchData();
   }, []);
 
 
@@ -218,7 +240,6 @@ export default function UsersPage() {
 
   const handleDeleteUser = async (id: string) => {
     try {
-        // This should also delete from Firebase Auth, which is not implemented yet.
         await deleteUser(id);
         setUsers(users.filter(u => u.id !== id));
         toast({ title: "User deleted successfully." });
@@ -243,7 +264,7 @@ export default function UsersPage() {
     <div className="flex flex-col gap-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold font-headline">User Management</h1>
-        <UserDialog onSave={handleSaveUser}>
+        <UserDialog onSave={handleSaveUser} courses={courses}>
              <Button>Add User</Button>
         </UserDialog>
       </div>
@@ -262,6 +283,7 @@ export default function UsersPage() {
                         <TableHead>Name</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Assigned Courses</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                     </TableHeader>
@@ -286,6 +308,16 @@ export default function UsersPage() {
                         <TableCell>
                             <Badge variant={user.status === 'Active' ? 'default' : 'destructive'}>{user.status}</Badge>
                         </TableCell>
+                        <TableCell>
+                           {user.role === 'tutor' && user.assignedCourses && user.assignedCourses.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                    {user.assignedCourses.map(courseId => {
+                                        const course = courses.find(c => c.id === courseId);
+                                        return <Badge key={courseId} variant="secondary">{course?.title || 'Unknown Course'}</Badge>
+                                    })}
+                                </div>
+                            ) : user.role === 'tutor' ? 'None' : 'N/A'}
+                        </TableCell>
                         <TableCell className="text-right">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -296,7 +328,7 @@ export default function UsersPage() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                    <UserDialog onSave={handleSaveUser} user={user}>
+                                    <UserDialog onSave={handleSaveUser} user={user} courses={courses}>
                                         <button className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full">Edit</button>
                                     </UserDialog>
                                     <DropdownMenuItem onClick={() => handleSuspendUser(user)}>

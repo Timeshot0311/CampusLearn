@@ -25,7 +25,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -37,17 +36,12 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { FileEdit, Lightbulb, Loader2 } from "lucide-react";
+import { FileEdit, Lightbulb } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { generateQuiz } from "@/ai/flows/smart-quiz-generation";
-import { generateAssignmentFeedback } from "@/ai/flows/ai-powered-feedback-generator";
-import { Badge } from "@/components/ui/badge";
 import { Submission, getTutorSubmissions } from "@/services/assignment-service";
-import { Grade, getTutorGradebook } from "@/services/grade-service";
+import { Grade } from "@/services/grade-service";
+import { FeedbackGeneratorDialog } from "@/components/feedback-generator-dialog";
 
 const performanceData = [
   { name: 'Quiz 1', avgScore: 78 },
@@ -56,172 +50,6 @@ const performanceData = [
   { name: 'P. Set 3', avgScore: 91 },
   { name: 'Final', avgScore: 88 },
 ];
-
-
-function QuizGeneratorDialog() {
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
-  const [material, setMaterial] = useState("");
-  const [numQuestions, setNumQuestions] = useState(5);
-  const [quizJson, setQuizJson] = useState("");
-
-  const handleGenerate = async () => {
-    setLoading(true);
-    setQuizJson("");
-    try {
-      const result = await generateQuiz({
-        learningMaterial: material,
-        numberOfQuestions: numQuestions,
-      });
-      setQuizJson(result.quiz);
-    } catch (error) {
-      console.error(error);
-      toast({
-        title: "Error Generating Quiz",
-        description: "There was an issue creating the quiz. Please try again.",
-        variant: "destructive",
-      });
-    }
-    setLoading(false);
-  };
-  
-  return (
-     <Dialog>
-      <DialogTrigger asChild>
-        <Button className="w-full">Create Quiz</Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Smart Quiz Generation</DialogTitle>
-          <DialogDescription>
-            Paste in any learning material (e.g., lecture notes, article) to automatically generate a practice quiz.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="material">Learning Material</Label>
-            <Textarea 
-                id="material" 
-                placeholder="Paste your content here..." 
-                rows={10} 
-                value={material}
-                onChange={(e) => setMaterial(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="num-questions">Number of Questions</Label>
-            <Input 
-                id="num-questions" 
-                type="number" 
-                value={numQuestions}
-                onChange={(e) => setNumQuestions(Number(e.target.value))}
-                className="w-24"
-            />
-          </div>
-          {quizJson && (
-             <div className="grid gap-2">
-              <Label>Generated Quiz (JSON)</Label>
-              <Textarea readOnly value={quizJson} rows={10} className="font-mono text-xs" />
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button onClick={handleGenerate} disabled={loading || !material}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {loading ? "Generating..." : "Generate Quiz"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function FeedbackGeneratorDialog() {
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState("");
-  const [studentName, setStudentName] = useState("");
-  const [courseName, setCourseName] = useState("");
-  const [assignmentDescription, setAssignmentDescription] = useState("");
-  const [studentSubmission, setStudentSubmission] = useState("");
-  const [tutorFeedbackGuidelines, setTutorFeedbackGuidelines] = useState("");
-
-  const handleGenerate = async () => {
-    setLoading(true);
-    setFeedback("");
-    try {
-      const result = await generateAssignmentFeedback({
-        studentName,
-        courseName,
-        assignmentDescription,
-        studentSubmission,
-        tutorFeedbackGuidelines,
-      });
-      setFeedback(result.feedback);
-    } catch (error) {
-      console.error(error);
-      toast({
-        title: "Error Generating Feedback",
-        description: "There was an issue drafting the feedback. Please try again.",
-        variant: "destructive",
-      });
-    }
-    setLoading(false);
-  };
-  
-  return (
-     <Dialog>
-      <DialogTrigger asChild>
-        <Button className="w-full">Generate Feedback</Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>AI-Powered Feedback Generator</DialogTitle>
-          <DialogDescription>
-            Fill in the details to generate personalized feedback for a student's assignment.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                    <Label htmlFor="student-name">Student Name</Label>
-                    <Input id="student-name" value={studentName} onChange={(e) => setStudentName(e.target.value)} />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="course-name">Course Name</Label>
-                    <Input id="course-name" value={courseName} onChange={(e) => setCourseName(e.target.value)} />
-                </div>
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor="assignment-desc">Assignment Description</Label>
-                <Textarea id="assignment-desc" value={assignmentDescription} onChange={(e) => setAssignmentDescription(e.target.value)} />
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor="student-submission">Student's Submission</Label>
-                <Textarea id="student-submission" value={studentSubmission} onChange={(e) => setStudentSubmission(e.target.value)} />
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor="tutor-guidelines">Tutor Guidelines (Optional)</Label>
-                <Textarea id="tutor-guidelines" placeholder="e.g., 'Focus on argument structure and use of evidence.'" value={tutorFeedbackGuidelines} onChange={(e) => setTutorFeedbackGuidelines(e.target.value)} />
-            </div>
-         
-          {feedback && (
-             <div className="grid gap-2">
-              <Label>Generated Feedback</Label>
-              <Textarea readOnly value={feedback} rows={8} />
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button onClick={handleGenerate} disabled={loading || !studentSubmission}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {loading ? "Generating..." : "Generate Feedback"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
 
 export function DashboardTutor() {
     const { toast } = useToast();
@@ -233,14 +61,10 @@ export function DashboardTutor() {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [fetchedSubmissions, fetchedGrades] = await Promise.all([
+                const [fetchedSubmissions] = await Promise.all([
                     getTutorSubmissions("tutor-id-placeholder"),
-                    getTutorGradebook("tutor-id-placeholder")
                 ]);
                 setSubmissions(fetchedSubmissions);
-                // In a real app, grades would be linked to submissions to determine what is pending
-                const gradedAssignmentIds = new Set(fetchedGrades.map(g => g.assignment));
-                // setPendingSubmissions(fetchedSubmissions.filter(s => !gradedAssignmentIds.has(s.assignment)));
             } catch (error) {
                  toast({ title: "Error fetching tutor data", variant: "destructive" });
             } finally {
@@ -338,18 +162,15 @@ export function DashboardTutor() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-                <Lightbulb className="h-6 w-6 text-primary"/>
-                <CardTitle className="font-headline">Smart Quiz Generation</CardTitle>
-            </div>
-            <CardDescription>
-              Auto-generate practice quizzes from your learning materials.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <QuizGeneratorDialog />
-          </CardFooter>
+            <CardHeader>
+                <div className="flex items-center gap-2">
+                    <Lightbulb className="h-6 w-6 text-primary"/>
+                    <CardTitle className="font-headline">Feature Moved</CardTitle>
+                </div>
+                <CardDescription>
+                The "Smart Quiz Generation" feature can now be found on the topic detail pages to better associate quizzes with specific learning discussions.
+                </CardDescription>
+            </CardHeader>
         </Card>
          <Card>
           <CardHeader>

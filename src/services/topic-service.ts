@@ -1,6 +1,8 @@
+
 import { db, storage } from '@/lib/firebase';
-import { collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, addDoc, updateDoc, query, where, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { v4 as uuidv4 } from 'uuid';
 
 export type TopicStatus = "Open" | "Closed" | "Reopened";
 
@@ -18,6 +20,18 @@ export type TopicReply = {
     timestamp: string;
 }
 
+export type Question = {
+    question: string;
+    options: string[];
+    answer: number;
+};
+
+export type Quiz = {
+    id: string;
+    title: string;
+    questions: Question[];
+};
+
 export type Topic = {
   id: string;
   title: string;
@@ -28,7 +42,18 @@ export type Topic = {
   replies: TopicReply[]; 
   status: TopicStatus;
   materials: LearningMaterial[];
+  subscribers?: string[];
+  quizzes?: Quiz[];
 };
+
+export type Notification = {
+    id: string;
+    userId: string;
+    text: string;
+    topicId: string;
+    isRead: boolean;
+    timestamp: string;
+}
 
 export async function getTopics(): Promise<Topic[]> {
     if (!db) return [];
@@ -88,4 +113,47 @@ export async function addMaterial(topicId: string, file: File): Promise<Learning
     await updateTopic(topicId, { materials: updatedMaterials });
 
     return newMaterial;
+}
+
+
+export async function addNotification(notification: Omit<Notification, 'id'>): Promise<string> {
+    if (!db) throw new Error("Firebase not initialized");
+    const notificationsCollection = collection(db, 'notifications');
+    const docRef = await addDoc(notificationsCollection, notification);
+    return docRef.id;
+}
+
+
+export async function getNotifications(userId: string): Promise<Notification[]> {
+    if (!db) return [];
+    const notificationsCollection = collection(db, 'notifications');
+    const q = query(
+        notificationsCollection, 
+        where("userId", "==", userId),
+        orderBy("timestamp", "desc")
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+}
+
+export async function markNotificationAsRead(notificationId: string): Promise<void> {
+    if (!db) throw new Error("Firebase not initialized");
+    const docRef = doc(db, 'notifications', notificationId);
+    await updateDoc(docRef, { isRead: true });
+}
+
+export async function addQuiz(topicId: string, quizData: Omit<Quiz, 'id'>): Promise<Quiz> {
+    if (!db) throw new Error("Firebase not initialized");
+    const topic = await getTopic(topicId);
+    if (!topic) throw new Error("Topic not found");
+
+    const newQuiz: Quiz = {
+        id: uuidv4(),
+        ...quizData
+    };
+
+    const updatedQuizzes = [...(topic.quizzes || []), newQuiz];
+    await updateTopic(topicId, { quizzes: updatedQuizzes });
+
+    return newQuiz;
 }

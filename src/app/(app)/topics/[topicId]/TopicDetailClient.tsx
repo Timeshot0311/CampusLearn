@@ -14,13 +14,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Paperclip, FileText, Video, Music, Send, MoreVertical, Download, Loader2 } from "lucide-react";
+import { Paperclip, FileText, Video, Music, Send, MoreVertical, Download, Loader2, BellRing, BellOff, Lightbulb } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { getTopic, updateTopic, addReply, addMaterial, Topic, TopicStatus, TopicReply } from "@/services/topic-service";
+import { getTopic, updateTopic, addReply, addMaterial, Topic, TopicStatus, TopicReply, addNotification, LearningMaterial, Quiz, addQuiz } from "@/services/topic-service";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QuizGeneratorDialog } from "@/components/quiz-generator-dialog";
+import { QuizTakerDialog } from "@/components/quiz-taker-dialog";
 
 
 function MaterialIcon({ type }: { type: string }) {
@@ -41,9 +43,13 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
   const [uploading, setUploading] = useState(false);
 
   const isTutorOrLecturerOrAdmin = user.role === "tutor" || user.role === "lecturer" || user.role === "admin";
+  const isTutor = user.role === "tutor";
   const isClosed = topic?.status === "Closed";
-  const canReply = !isClosed || isTutorOrLecturerOrAdmin;
+  
+  const canTutorReply = isTutor ? user.assignedCourses?.includes(topic?.course || '') : true;
+  const canReply = (!isClosed && (user.role === 'student' || canTutorReply)) || isTutorOrLecturerOrAdmin;
 
+  const isSubscribed = topic?.subscribers?.includes(user.id);
 
   useEffect(() => {
     if (!topicId) return;
@@ -70,11 +76,28 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
         authorAvatar: user.avatar,
         role: user.role,
         text: newReply,
-        timestamp: new Date().toISOString(), // Use ISO string for consistency
+        timestamp: new Date().toISOString(),
     };
     
     try {
         await addReply(topic.id, reply);
+
+        // Send notifications to subscribers
+        if (topic.subscribers && topic.subscribers.length > 0) {
+            for (const subscriberId of topic.subscribers) {
+                if (subscriberId !== user.id) { // Don't notify the person who replied
+                    await addNotification({
+                        userId: subscriberId,
+                        text: `${user.name} replied to the topic: "${topic.title}"`,
+                        topicId: topic.id,
+                        isRead: false,
+                        timestamp: new Date().toISOString(),
+                    });
+                }
+            }
+        }
+
+
         setTopic(prev => prev ? { ...prev, replies: [...(prev.replies || []), reply] } : null);
         setNewReply("");
         toast({ title: "Reply posted!" });
@@ -82,6 +105,23 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
         toast({ title: "Error posting reply", variant: "destructive" });
     } finally {
         setReplying(false);
+    }
+  }
+
+  const handleToggleSubscription = async () => {
+    if (!topic) return;
+
+    const currentSubscribers = topic.subscribers || [];
+    const newSubscribers = isSubscribed 
+        ? currentSubscribers.filter(id => id !== user.id)
+        : [...currentSubscribers, user.id];
+    
+    try {
+        await updateTopic(topic.id, { subscribers: newSubscribers });
+        setTopic(prev => prev ? { ...prev, subscribers: newSubscribers } : null);
+        toast({ title: isSubscribed ? "Unsubscribed" : "Subscribed!", description: `You will ${isSubscribed ? 'no longer' : 'now'} receive notifications for this topic.`});
+    } catch (error) {
+        toast({ title: "Error updating subscription", variant: "destructive" });
     }
   }
 
@@ -117,6 +157,17 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
     }
   };
 
+  const handleQuizSave = async (quiz: Omit<Quiz, 'id'>) => {
+    if (!topic) return;
+    try {
+        const newQuiz = await addQuiz(topic.id, quiz);
+        setTopic(prev => prev ? { ...prev, quizzes: [...(prev.quizzes || []), newQuiz] } : null);
+        toast({ title: "Quiz Saved!", description: "The new quiz is available for students."});
+    } catch (error) {
+        toast({ title: "Error saving quiz", variant: "destructive" });
+    }
+  }
+
   if (loading) {
     return (
         <div className="grid md:grid-cols-3 gap-6">
@@ -140,10 +191,9 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
     return <div>Topic not found.</div>;
   }
 
-
   return (
-    <div className="grid md:grid-cols-3 gap-6">
-      <div className="md:col-span-2">
+    <div className="grid md:grid-cols-4 gap-6">
+      <div className="md:col-span-3">
         <Card>
           <CardHeader>
             <div className="flex justify-between items-start">
@@ -153,6 +203,10 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
                 <CardDescription className="mt-2">{topic.description}</CardDescription>
               </div>
                <div className="flex items-center gap-2">
+                <Button variant={isSubscribed ? "default" : "outline"} size="sm" onClick={handleToggleSubscription}>
+                    {isSubscribed ? <BellOff className="mr-2 h-4 w-4" /> : <BellRing className="mr-2 h-4 w-4" />}
+                    {isSubscribed ? 'Unsubscribe' : 'Subscribe'}
+                </Button>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <div className="flex items-center gap-2 cursor-pointer">
@@ -206,7 +260,11 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
              <h3 className="font-semibold">Post a Reply</h3>
              <div className="w-full relative">
                 <Textarea 
-                    placeholder={!canReply ? "This topic is closed for students." : "Type your message here..."}
+                    placeholder={
+                        isClosed && user.role === 'student' ? "This topic is closed for students." :
+                        !canReply && isTutor ? `You are not assigned to the "${topic.course}" course.` :
+                        "Type your message here..."
+                    }
                     value={newReply}
                     onChange={(e) => setNewReply(e.target.value)}
                     rows={4}
@@ -223,7 +281,7 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
         </Card>
       </div>
 
-      <div>
+      <div className="md:col-span-1 space-y-6">
         <Card>
           <CardHeader>
             <CardTitle className="font-headline">Learning Materials</CardTitle>
@@ -263,6 +321,31 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
                 </div>
              )}
           </CardContent>
+        </Card>
+        <Card>
+            <CardHeader>
+                <div className="flex items-center gap-2">
+                    <Lightbulb className="h-6 w-6 text-primary"/>
+                    <CardTitle className="font-headline">Interactive Quizzes</CardTitle>
+                </div>
+                <CardDescription>Practice quizzes for this topic.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {topic.quizzes?.map((quiz) => (
+                    <div key={quiz.id} className="flex items-center p-3 rounded-md border justify-between">
+                        <span className="text-sm font-medium">{quiz.title}</span>
+                         <QuizTakerDialog quiz={quiz} />
+                    </div>
+                ))}
+                {(!topic.quizzes || topic.quizzes.length === 0) && (
+                    <p className="text-sm text-muted-foreground text-center py-4">No quizzes available yet.</p>
+                )}
+            </CardContent>
+            {isTutorOrLecturerOrAdmin && (
+                <CardFooter>
+                    <QuizGeneratorDialog onSave={handleQuizSave} />
+                </CardFooter>
+            )}
         </Card>
       </div>
     </div>
