@@ -8,7 +8,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { PlayCircle, FileText, CheckCircle, BookOpen, Youtube, File, ClipboardCheck, Trash2, PlusCircle, Loader2, Upload, Pencil, Users, Send, UserPlus } from "lucide-react";
 import { Course, Module, Lesson, updateCourse, uploadCourseFile, getCourse } from "@/services/course-service";
 import { Topic, addTopic } from "@/services/topic-service";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -26,6 +26,8 @@ import { User, getUsers } from "@/services/user-service";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EnrollStudentDialog } from "@/components/enroll-student-dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 
 const LessonIcon = ({ type }: { type: Lesson['type'] }) => {
@@ -401,6 +403,65 @@ const AskQuestionCard = ({ course, user }: { course: Course, user: User }) => {
     );
 };
 
+const CourseParticipants = ({ course, allUsers }: { course: Course, allUsers: User[] }) => {
+    const participants = useMemo(() => {
+        const studentIds = new Set(course.enrolledStudents || []);
+        const lecturerIds = new Set(course.assignedLecturers || []);
+        const tutorIds = new Set(course.assignedTutors || []);
+
+        return allUsers.filter(user => 
+            studentIds.has(user.id) || 
+            lecturerIds.has(user.id) || 
+            tutorIds.has(user.id)
+        );
+    }, [course, allUsers]);
+
+    if (participants.length === 0) {
+        return null; // Or some placeholder
+    }
+
+    return (
+        <Card className="mt-6">
+            <CardHeader>
+                <CardTitle>Course Participants</CardTitle>
+                <CardDescription>All students and staff involved in this course.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Role</TableHead>
+                            <TableHead>Status</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {participants.map(user => (
+                            <TableRow key={user.id}>
+                                <TableCell>
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className="h-9 w-9">
+                                            <AvatarImage src={user.avatar} alt={user.name} />
+                                            <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                        </Avatar>
+                                        <span className="font-medium">{user.name}</span>
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant="outline" className="capitalize">{user.role}</Badge>
+                                </TableCell>
+                                <TableCell>
+                                     <Badge variant={user.status === 'Active' ? 'default' : 'destructive'}>{user.status}</Badge>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    )
+}
+
 
 export default function CourseDetailClient({ courseId }: { courseId: string }) {
   const { toast } = useToast();
@@ -649,6 +710,7 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
         {/* Right column for lesson content */}
         <div className="lg:col-span-2">
             <LessonContentDisplay lesson={activeLesson} courseTitle={course.title} />
+            <CourseParticipants course={course} allUsers={allUsers} />
         </div>
     </div>
   );
