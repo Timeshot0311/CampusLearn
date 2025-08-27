@@ -95,7 +95,14 @@ function MultiSelect({
           <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+      <PopoverContent 
+        className="w-[--radix-popover-trigger-width] p-0"
+        container={
+            typeof window !== "undefined"
+            ? (window.document.querySelector(".radix-dialog-content") as HTMLElement)
+            : undefined
+        }
+      >
         <Command>
           <CommandInput placeholder="Search..." />
           <CommandList>
