@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,7 +55,7 @@ const LessonContentDisplay = ({ lesson }: { lesson: Lesson }) => {
         case 'youtube':
             const embedUrl = lesson.content.includes("embed") ? lesson.content : lesson.content.replace("watch?v=", "embed/");
             return (
-                <div className="aspect-video bg-black">
+                <div className="aspect-video bg-black rounded-lg overflow-hidden">
                     <iframe
                         className="w-full h-full"
                         src={embedUrl}
@@ -66,10 +67,10 @@ const LessonContentDisplay = ({ lesson }: { lesson: Lesson }) => {
             );
         case 'pdf':
             return (
-                <div className="p-8 flex flex-col items-center justify-center text-center gap-4 aspect-video bg-muted/50">
+                <div className="p-8 flex flex-col items-center justify-center text-center gap-4 aspect-video bg-muted/50 rounded-lg">
                     <FileText className="h-16 w-16 text-muted-foreground"/>
-                    <h3 className="text-lg font-semibold">PDF Document</h3>
-                    <p className="text-muted-foreground">This lesson is a PDF file.</p>
+                    <h3 className="text-lg font-semibold">PDF Document: {lesson.title}</h3>
+                    <p className="text-muted-foreground">This lesson is a PDF file. Click below to view it in a new tab.</p>
                     <a href={lesson.content} target="_blank" rel="noopener noreferrer">
                         <Button>Download PDF</Button>
                     </a>
@@ -80,11 +81,28 @@ const LessonContentDisplay = ({ lesson }: { lesson: Lesson }) => {
     }
 };
 
-const NewLessonForm = ({ courseId, moduleId, onLessonAdded, onCancel }: { courseId: string, moduleId: string, onLessonAdded: (modules: Module[]) => void, onCancel: () => void }) => {
+const LessonDialog = ({ lesson, children }: { lesson: Lesson, children: React.ReactNode }) => {
+    return (
+        <Dialog>
+            <DialogTrigger asChild>{children}</DialogTrigger>
+            <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>{lesson.title}</DialogTitle>
+                    <DialogDescription className="capitalize">{lesson.type} Lesson</DialogDescription>
+                </DialogHeader>
+                <div className="flex-grow overflow-auto">
+                    <LessonContentDisplay lesson={lesson} />
+                </div>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+const LessonForm = ({ courseId, moduleId, onLessonSaved, onCancel, existingLesson }: { courseId: string, moduleId: string, onLessonSaved: (modules: Module[]) => void, onCancel: () => void, existingLesson?: Lesson }) => {
     const { toast } = useToast();
-    const [title, setTitle] = useState('');
-    const [type, setType] = useState<Lesson['type']>('article');
-    const [content, setContent] = useState('');
+    const [title, setTitle] = useState(existingLesson?.title || '');
+    const [type, setType] = useState<Lesson['type']>(existingLesson?.type || 'article');
+    const [content, setContent] = useState(existingLesson?.content || '');
     const [uploading, setUploading] = useState(false);
 
     const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,42 +122,56 @@ const NewLessonForm = ({ courseId, moduleId, onLessonAdded, onCancel }: { course
         }
     };
 
-    const handleAddLesson = async () => {
+    const handleSaveLesson = async () => {
         if (!title.trim() || !content.trim()) {
             toast({ title: "Missing fields", description: "Please provide a title and content for the lesson.", variant: "destructive" });
             return;
         }
-
-        const newLesson: Lesson = { id: uuidv4(), title, type, content, completed: false };
+        
         const currentCourse = await getCourse(courseId);
         if (!currentCourse) return;
 
-        const updatedModules = currentCourse.modules.map(m => {
-            if (m.id === moduleId) {
-                return { ...m, lessons: [...m.lessons, newLesson] };
-            }
-            return m;
-        });
+        let updatedModules;
+
+        if (existingLesson) {
+            // Update existing lesson
+            updatedModules = currentCourse.modules.map(m => {
+                if (m.id === moduleId) {
+                    return { ...m, lessons: m.lessons.map(l => l.id === existingLesson.id ? { ...l, title, type, content } : l) };
+                }
+                return m;
+            });
+        } else {
+            // Add new lesson
+            const newLesson: Lesson = { id: uuidv4(), title, type, content, completed: false };
+             updatedModules = currentCourse.modules.map(m => {
+                if (m.id === moduleId) {
+                    return { ...m, lessons: [...m.lessons, newLesson] };
+                }
+                return m;
+            });
+        }
+
 
         try {
             await updateCourse(courseId, { modules: updatedModules });
-            toast({ title: "Lesson Added!" });
-            onLessonAdded(updatedModules);
+            toast({ title: existingLesson ? "Lesson Updated!" : "Lesson Added!" });
+            onLessonSaved(updatedModules);
         } catch (error) {
-            toast({ title: "Error adding lesson", variant: "destructive" });
+            toast({ title: "Error saving lesson", variant: "destructive" });
         }
     };
     
     return (
         <div className="p-4 border-t space-y-4">
-            <h4 className="font-semibold">New Lesson</h4>
+            <h4 className="font-semibold">{existingLesson ? 'Edit Lesson' : 'New Lesson'}</h4>
             <div className="grid gap-2">
                 <Label>Lesson Title</Label>
                 <Input placeholder="e.g., The Structure of an Atom" value={title} onChange={e => setTitle(e.target.value)} />
             </div>
             <div className="grid gap-2">
                 <Label>Lesson Type</Label>
-                <Select value={type} onValueChange={(v: Lesson['type']) => { setType(v); setContent('')}}>
+                <Select value={type} onValueChange={(v: Lesson['type']) => { setType(v); if (!existingLesson) setContent('')}}>
                     <SelectTrigger><SelectValue placeholder="Lesson Type" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="article">Article</SelectItem>
@@ -150,7 +182,7 @@ const NewLessonForm = ({ courseId, moduleId, onLessonAdded, onCancel }: { course
             </div>
             <div className="grid gap-2">
                 <Label>Content</Label>
-                {type === 'article' && <Textarea placeholder="Write your article content here..." value={content} onChange={e => setContent(e.target.value)} rows={10}/>}
+                {type === 'article' && <Textarea placeholder="Write your article content here... Markdown is supported." value={content} onChange={e => setContent(e.target.value)} rows={10}/>}
                 {type === 'youtube' && <Input placeholder="https://www.youtube.com/watch?v=..." value={content} onChange={e => setContent(e.target.value)}/>}
                 {type === 'pdf' && (
                      <div className="flex items-center gap-2">
@@ -166,11 +198,35 @@ const NewLessonForm = ({ courseId, moduleId, onLessonAdded, onCancel }: { course
             </div>
             <div className="flex gap-2 justify-end">
                 <Button variant="ghost" onClick={onCancel}>Cancel</Button>
-                <Button onClick={handleAddLesson} disabled={uploading}>Save Lesson</Button>
+                <Button onClick={handleSaveLesson} disabled={uploading}>{existingLesson ? "Save Changes" : "Add Lesson"}</Button>
             </div>
         </div>
     );
 };
+
+const EditLessonDialog = ({ courseId, moduleId, onLessonSaved, lesson, children }: { courseId: string, moduleId: string, onLessonSaved: (modules: Module[]) => void, lesson: Lesson, children: React.ReactNode }) => {
+    const [open, setOpen] = useState(false);
+    
+    const handleLessonSaved = (modules: Module[]) => {
+        onLessonSaved(modules);
+        setOpen(false);
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>{children}</DialogTrigger>
+            <DialogContent className="sm:max-w-2xl">
+                 <LessonForm 
+                    courseId={courseId} 
+                    moduleId={moduleId} 
+                    onLessonSaved={handleLessonSaved} 
+                    onCancel={() => setOpen(false)} 
+                    existingLesson={lesson} 
+                 />
+            </DialogContent>
+        </Dialog>
+    )
+}
 
 
 export default function CourseDetailPage({ params }: { params: { courseId: string } }) {
@@ -178,7 +234,6 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   const { user } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [addingLessonToModule, setAddingLessonToModule] = useState<string | null>(null);
   const [newModuleName, setNewModuleName] = useState("");
@@ -191,9 +246,6 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
             setLoading(true);
             const fetchedCourse = await getCourse(params.courseId);
             setCourse(fetchedCourse);
-            if (fetchedCourse?.modules?.[0]?.lessons?.[0]) {
-                setActiveLesson(fetchedCourse.modules[0].lessons[0]);
-            }
         } catch (error) {
             toast({ title: "Error fetching course data", variant: "destructive" });
         } finally {
@@ -203,9 +255,6 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
     fetchCourse();
   }, [params.courseId, toast]);
 
-  const handleLessonClick = (lesson: Lesson) => {
-    setActiveLesson(lesson);
-  };
   
   const handleAddModule = async () => {
     if (!newModuleName.trim() || !course) return;
@@ -244,16 +293,13 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
      try {
         await updateCourse(course.id, { modules: updatedModules });
         setCourse({ ...course, modules: updatedModules });
-        if (activeLesson?.id === lessonId) {
-            setActiveLesson(null);
-        }
         toast({ title: "Lesson Deleted!" });
     } catch (error) {
         toast({ title: "Error deleting lesson", variant: "destructive" });
     }
   }
   
-  const onLessonAdded = (updatedModules: Module[]) => {
+  const onLessonSaved = (updatedModules: Module[]) => {
     if (!course) return;
     setCourse({ ...course, modules: updatedModules });
     setAddingLessonToModule(null);
@@ -263,15 +309,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
       return (
         <div className="grid md:grid-cols-3 gap-6">
           <div className="md:col-span-2">
-            <Skeleton className="w-full aspect-video" />
-            <div className="p-6 space-y-4">
-                <Skeleton className="h-8 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-                <div className="pt-6 space-y-4">
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                </div>
-            </div>
+            <Skeleton className="w-full h-80" />
           </div>
           <div>
             <Skeleton className="h-64 w-full" />
@@ -288,8 +326,6 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
     <div className="grid md:grid-cols-3 gap-6 items-start">
       <div className="md:col-span-2">
         <Card className="overflow-hidden">
-             <LessonContentDisplay lesson={activeLesson || course.modules?.[0]?.lessons?.[0]} />
-            
             <CardHeader>
                 <div className="flex justify-between items-center">
                     <CardTitle className="text-3xl font-headline">{course.title}</CardTitle>
@@ -308,8 +344,8 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                  <Accordion type="single" collapsible className="w-full" defaultValue={course.modules.length > 0 ? course.modules[0].id : undefined}>
                     {course.modules.map((module) => (
                         <AccordionItem value={module.id} key={module.id}>
-                            <AccordionTrigger className="text-lg font-semibold">
-                                <div className="flex items-center justify-between w-full">
+                            <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+                                <div className="flex items-center justify-between w-full pr-2">
                                     <span>{module.title}</span>
                                      {editMode && (
                                         <AlertDialog>
@@ -336,32 +372,39 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                                 <ul className="space-y-1">
                                     {module.lessons.map((lesson) => (
                                         <li key={lesson.id} className="group flex justify-between items-center pr-2 rounded-md hover:bg-muted/50">
-                                            <button 
-                                                onClick={() => handleLessonClick(lesson)}
-                                                className={`w-full flex items-center justify-between p-3 rounded-md text-left ${activeLesson?.id === lesson.id ? 'bg-muted' : ''}`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <LessonIcon type={lesson.type} />
-                                                    <span>{lesson.title}</span>
-                                                </div>
-                                                <div className="flex items-center gap-3">
-                                                    {lesson.duration && <span className="text-sm text-muted-foreground">{lesson.duration}</span>}
-                                                    <CheckCircle className={`h-5 w-5 ${lesson.completed ? 'text-green-500' : 'text-muted-foreground/30'}`} />
-                                                </div>
-                                            </button>
+                                            <LessonDialog lesson={lesson}>
+                                                <button className="w-full flex items-center justify-between p-3 rounded-md text-left">
+                                                    <div className="flex items-center gap-3">
+                                                        <LessonIcon type={lesson.type} />
+                                                        <span>{lesson.title}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        {lesson.duration && <span className="text-sm text-muted-foreground">{lesson.duration}</span>}
+                                                        <CheckCircle className={`h-5 w-5 ${lesson.completed ? 'text-green-500' : 'text-muted-foreground/30'}`} />
+                                                    </div>
+                                                </button>
+                                            </LessonDialog>
                                             {editMode && (
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/90 hover:bg-destructive/10 opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader><AlertDialogTitle>Delete Lesson?</AlertDialogTitle></AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleDeleteLesson(module.id, lesson.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
+                                                <div className="flex items-center">
+                                                    <EditLessonDialog courseId={course.id} moduleId={module.id} onLessonSaved={onLessonSaved} lesson={lesson}>
+                                                         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary/90 hover:bg-primary/10 opacity-0 group-hover:opacity-100"><Pencil className="h-4 w-4" /></Button>
+                                                    </EditLessonDialog>
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/90 hover:bg-destructive/10 opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Delete Lesson?</AlertDialogTitle>
+                                                                <AlertDialogDescription>This will permanently delete the "{lesson.title}" lesson.</AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDeleteLesson(module.id, lesson.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </div>
                                             )}
                                         </li>
                                     ))}
@@ -369,7 +412,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                                 </ul>
                                 {editMode && (
                                     addingLessonToModule === module.id ? (
-                                        <NewLessonForm courseId={course.id} moduleId={module.id} onLessonAdded={onLessonAdded} onCancel={() => setAddingLessonToModule(null)} />
+                                        <LessonForm courseId={course.id} moduleId={module.id} onLessonSaved={onLessonSaved} onCancel={() => setAddingLessonToModule(null)} />
                                     ) : (
                                          <div className="p-2 border-t mt-2">
                                             <Button variant="link" onClick={() => setAddingLessonToModule(module.id)}>
