@@ -1,11 +1,12 @@
 
+
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { PlayCircle, FileText, CheckCircle, BookOpen, Youtube, File, ClipboardCheck, Trash2, PlusCircle, Loader2, Upload, Pencil } from "lucide-react";
+import { PlayCircle, FileText, CheckCircle, BookOpen, Youtube, File, ClipboardCheck, Trash2, PlusCircle, Loader2, Upload, Pencil, Users } from "lucide-react";
 import { Lesson, Module, Course, getCourse, updateCourse, uploadCourseFile } from "@/services/course-service";
 import { useState, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +22,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { User, getUsers } from "@/services/user-service";
+import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 
 
 const LessonIcon = ({ type }: { type: Lesson['type'] }) => {
@@ -40,13 +43,13 @@ const LessonIcon = ({ type }: { type: Lesson['type'] }) => {
     }
 }
 
-const LessonContentDisplay = ({ lesson }: { lesson: Lesson | null }) => {
+const LessonContentDisplay = ({ lesson, courseTitle }: { lesson: Lesson | null; courseTitle: string }) => {
     if (!lesson) {
         return (
             <Card className="h-full">
                 <CardContent className="h-full flex flex-col items-center justify-center text-center p-8">
                     <BookOpen className="h-16 w-16 text-muted-foreground mb-4" />
-                    <h3 className="text-xl font-semibold">Welcome to {`'Course Title'`}!</h3>
+                    <h3 className="text-xl font-semibold">Welcome to {courseTitle}!</h3>
                     <p className="text-muted-foreground">Select a lesson from the list on the left to get started.</p>
                 </CardContent>
             </Card>
@@ -227,6 +230,115 @@ const EditLessonDialog = ({ courseId, moduleId, onLessonSaved, lesson, children 
             </DialogContent>
         </Dialog>
     )
+};
+
+const AssignStaffDialog = ({ course, module, onStaffAssigned, children }: { course: Course, module: Module, onStaffAssigned: (modules: Module[]) => void, children: React.ReactNode}) => {
+    const { user } = useAuth();
+    const { toast } = useToast();
+    const [open, setOpen] = useState(false);
+    const [allUsers, setAllUsers] = useState<User[]>([]);
+    const [lecturers, setLecturers] = useState<MultiSelectOption[]>([]);
+    const [tutors, setTutors] = useState<MultiSelectOption[]>([]);
+    const [assignedLecturers, setAssignedLecturers] = useState<string[]>(module.assignedLecturers || []);
+    const [assignedTutors, setAssignedTutors] = useState<string[]>(module.assignedTutors || []);
+
+    const isAdmin = user?.role === 'admin';
+    const isLecturer = user?.role === 'lecturer';
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            const users = await getUsers();
+            setAllUsers(users);
+            setLecturers(users.filter(u => u.role === 'lecturer').map(u => ({ value: u.id, label: u.name })));
+            setTutors(users.filter(u => u.role === 'tutor').map(u => ({ value: u.id, label: u.name })));
+        };
+        if (open) {
+            fetchUsers();
+            setAssignedLecturers(module.assignedLecturers || []);
+            setAssignedTutors(module.assignedTutors || []);
+        }
+    }, [open, module]);
+
+    const handleSave = async () => {
+        const updatedModules = course.modules.map(m => {
+            if (m.id === module.id) {
+                return { ...m, assignedLecturers, assignedTutors };
+            }
+            return m;
+        });
+
+        try {
+            await updateCourse(course.id, { modules: updatedModules });
+            toast({ title: "Staff Assigned!" });
+            onStaffAssigned(updatedModules);
+            setOpen(false);
+        } catch (error) {
+            toast({ title: "Error assigning staff", variant: "destructive" });
+        }
+    }
+
+    return (
+         <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>{children}</DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Assign Staff to "{module.title}"</DialogTitle>
+                    <DialogDescription>Select the lecturers and tutors responsible for this module.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="grid gap-2">
+                        <Label>Lecturers</Label>
+                        <MultiSelect 
+                            options={lecturers}
+                            selected={assignedLecturers}
+                            onChange={setAssignedLecturers}
+                            placeholder="Assign lecturers..."
+                            className={!isAdmin ? "pointer-events-none opacity-50" : ""}
+                        />
+                         {!isAdmin && isLecturer && <p className="text-xs text-muted-foreground">Only admins can assign lecturers.</p>}
+                    </div>
+                     <div className="grid gap-2">
+                        <Label>Tutors</Label>
+                         <MultiSelect 
+                            options={tutors}
+                            selected={assignedTutors}
+                            onChange={setAssignedTutors}
+                            placeholder="Assign tutors..."
+                        />
+                    </div>
+                </div>
+                 <DialogFooter>
+                    <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSave}>Save Assignments</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+const ModuleStaff = ({ module, allUsers }: { module: Module, allUsers: User[] }) => {
+    const staff = [
+        ...(module.assignedLecturers?.map(id => allUsers.find(u => u.id === id)) || []),
+        ...(module.assignedTutors?.map(id => allUsers.find(u => u.id === id)) || [])
+    ].filter((u): u is User => !!u);
+
+    if (staff.length === 0) return null;
+
+    return (
+        <div className="flex items-center space-x-2 mt-2">
+            {staff.slice(0, 4).map(user => (
+                <Avatar key={user.id} className="h-6 w-6 border-2 border-background">
+                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                </Avatar>
+            ))}
+             {staff.length > 4 && (
+                <div className="flex items-center justify-center h-6 w-6 rounded-full bg-muted text-xs font-semibold">
+                    +{staff.length - 4}
+                </div>
+            )}
+        </div>
+    )
 }
 
 
@@ -234,6 +346,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   const { toast } = useToast();
   const { user } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [addingLessonToModule, setAddingLessonToModule] = useState<string | null>(null);
@@ -243,18 +356,22 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
   const isLecturerOrAdmin = user?.role === 'lecturer' || user?.role === 'admin';
 
   useEffect(() => {
-    const fetchCourse = async () => {
+    const fetchCourseAndUsers = async () => {
         try {
             setLoading(true);
-            const fetchedCourse = await getCourse(params.courseId);
+            const [fetchedCourse, fetchedUsers] = await Promise.all([
+                getCourse(params.courseId),
+                getUsers()
+            ]);
             setCourse(fetchedCourse);
+            setAllUsers(fetchedUsers);
         } catch (error) {
             toast({ title: "Error fetching course data", variant: "destructive" });
         } finally {
             setLoading(false);
         }
     };
-    fetchCourse();
+    fetchCourseAndUsers();
   }, [params.courseId, toast]);
 
   
@@ -301,7 +418,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
     }
   }
   
-  const onLessonSaved = (updatedModules: Module[]) => {
+  const onDataSaved = (updatedModules: Module[]) => {
     if (!course) return;
     setCourse({ ...course, modules: updatedModules });
     setAddingLessonToModule(null);
@@ -347,8 +464,15 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                             <AccordionItem value={module.id} key={module.id}>
                                 <AccordionTrigger className="text-lg font-semibold hover:no-underline">
                                     <div className="flex items-center justify-between w-full pr-2">
-                                        <span>{module.title}</span>
+                                        <div className="flex-col items-start">
+                                            <span>{module.title}</span>
+                                            <ModuleStaff module={module} allUsers={allUsers} />
+                                        </div>
                                         {editMode && (
+                                            <div className="flex items-center">
+                                            <AssignStaffDialog course={course} module={module} onStaffAssigned={onDataSaved}>
+                                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary/90 hover:bg-primary/10"><Users className="h-4 w-4" /></Button>
+                                            </AssignStaffDialog>
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild onClick={(e) => e.stopPropagation()}>
                                                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
@@ -364,6 +488,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                                                     </AlertDialogFooter>
                                                 </AlertDialogContent>
                                             </AlertDialog>
+                                            </div>
                                         )}
                                     </div>
                                 </AccordionTrigger>
@@ -379,7 +504,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                                                     <CheckCircle className={`h-5 w-5 ${lesson.completed ? 'text-green-500' : 'text-muted-foreground/30'}`} />
                                                     {editMode && (
                                                         <div className="flex items-center opacity-0 group-hover:opacity-100">
-                                                            <EditLessonDialog courseId={course.id} moduleId={module.id} onLessonSaved={onLessonSaved} lesson={lesson}>
+                                                            <EditLessonDialog courseId={course.id} moduleId={module.id} onLessonSaved={onDataSaved} lesson={lesson}>
                                                                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary/90 hover:bg-primary/10"><Pencil className="h-4 w-4" /></Button>
                                                             </EditLessonDialog>
                                                             <AlertDialog>
@@ -406,7 +531,7 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                                     </ul>
                                     {editMode && (
                                         addingLessonToModule === module.id ? (
-                                            <LessonForm courseId={course.id} moduleId={module.id} onLessonSaved={onLessonSaved} onCancel={() => setAddingLessonToModule(null)} />
+                                            <LessonForm courseId={course.id} moduleId={module.id} onLessonSaved={onDataSaved} onCancel={() => setAddingLessonToModule(null)} />
                                         ) : (
                                             <div className="p-2 border-t mt-2">
                                                 <Button variant="link" onClick={() => setAddingLessonToModule(module.id)}>
@@ -437,26 +562,13 @@ export default function CourseDetailPage({ params }: { params: { courseId: strin
                     </CardContent>
                 </Card>
             )}
-
-             <Card>
-                <CardHeader className="items-center text-center">
-                    <Avatar className="h-24 w-24 mb-2">
-                        <AvatarImage src={`https://i.pravatar.cc/150?u=${course.instructor.replace(/\s+/g, '')}`} alt={course.instructor} />
-                        <AvatarFallback>{course.instructor.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                    </Avatar>
-                    <CardTitle className="font-headline">{course.instructor}</CardTitle>
-                    <CardDescription>Lead Instructor</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button className="w-full">Ask a Question</Button>
-                </CardContent>
-            </Card>
         </div>
 
         {/* Right column for lesson content */}
         <div className="lg:col-span-2">
-            <LessonContentDisplay lesson={activeLesson} />
+            <LessonContentDisplay lesson={activeLesson} courseTitle={course.title} />
         </div>
     </div>
   );
 }
+

@@ -16,10 +16,12 @@ export type Module = {
     id: string;
     title: string;
     lessons: Lesson[];
+    assignedLecturers?: string[];
+    assignedTutors?: string[];
 };
 
 export type Course = {
-    id: string;
+    id:string;
     title: string;
     description: string;
     instructor: string;
@@ -28,7 +30,7 @@ export type Course = {
     dataAiHint: string;
     ownerId: string;
     published: boolean;
-    modules: Module[]; 
+    modules: Module[];
 };
 
 export async function getCourses(): Promise<Course[]> {
