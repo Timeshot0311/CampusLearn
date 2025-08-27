@@ -1,5 +1,4 @@
 
-
 "use client";
 import { useState, useMemo, useEffect } from "react";
 import {
@@ -130,11 +129,11 @@ function MaterialIcon({ type }: { type: string }) {
 }
 
 export default function TopicDetailPage({ params }: { params: { topicId: string } }) {
+  const { topicId } = params;
   const { user } = useAuth();
   const { toast } = useToast();
   
   const [topicData, setTopicData] = useState<any>(null);
-  const topicId = useMemo(() => params.topicId, [params.topicId]);
 
   useEffect(() => {
     setTopicData(getTopicFromStorage(topicId));
@@ -321,3 +320,5 @@ export default function TopicDetailPage({ params }: { params: { topicId: string 
     </div>
   );
 }
+
+    
