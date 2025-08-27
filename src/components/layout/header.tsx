@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -50,7 +51,9 @@ export default function AppHeader() {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Settings</DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/profile">Profile</Link>
+          </DropdownMenuItem>
           <DropdownMenuItem>Support</DropdownMenuItem>
           <DropdownMenuSeparator />
            <DropdownMenuItem asChild>

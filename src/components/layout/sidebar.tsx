@@ -13,6 +13,7 @@ import {
   MessageSquarePlus,
   Users,
   PanelLeft,
+  User,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Logo } from "@/components/logo";
@@ -31,6 +32,7 @@ const studentNav = [
   { href: "/topics", icon: MessageSquarePlus, label: "Help Topics" },
   { href: "/assignments", icon: ClipboardCheck, label: "Assignments" },
   { href: "/grades", icon: GraduationCap, label: "Grades" },
+  { href: "/profile", icon: User, label: "Profile" },
 ];
 
 const tutorNav = [
@@ -39,6 +41,7 @@ const tutorNav = [
   { href: "/topics", icon: MessageSquarePlus, label: "Help Topics" },
   { href: "/assignments", icon: ClipboardCheck, label: "Submissions" },
   { href: "/analytics", icon: LineChart, label: "Analytics" },
+  { href: "/profile", icon: User, label: "Profile" },
 ];
 
 const lecturerNav = [
@@ -47,6 +50,7 @@ const lecturerNav = [
   { href: "/topics", icon: MessageSquarePlus, label: "Manage Topics" },
   { href: "/assignments", icon: ClipboardCheck, label: "Submissions" },
   { href: "/analytics", icon: LineChart, label: "Analytics" },
+  { href: "/profile", icon: User, label: "Profile" },
 ];
 
 const adminNav = [
@@ -54,6 +58,7 @@ const adminNav = [
   { href: "/users", icon: Users, label: "User Management" },
   { href: "/courses", icon: Package, label: "Course Management" },
   { href: "/analytics", icon: LineChart, label: "System Analytics" },
+  { href: "/profile", icon: User, label: "Profile" },
 ];
 
 const navItems = {
@@ -66,6 +71,11 @@ const navItems = {
 function NavContent() {
   const { user } = useAuth();
   const pathname = usePathname();
+
+  const getNavItems = () => {
+    if (!user || !user.role) return [];
+    return navItems[user.role] || [];
+  };
 
   return (
     <div className="flex h-full max-h-screen flex-col gap-2">
@@ -80,14 +90,13 @@ function NavContent() {
       </div>
       <div className="flex-1 overflow-auto py-2">
         <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-          {(navItems[user.role] || []).map((item) => (
+          {getNavItems().map((item) => (
              <Link
                 key={item.label}
                 href={item.href}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-                  pathname.startsWith(item.href) && item.href !== "/" && "bg-muted text-primary",
-                  pathname === "/" && item.href === "/" && "bg-muted text-primary"
+                  pathname === item.href && "bg-muted text-primary"
                 )}
               >
                 <item.icon className="h-4 w-4" />
