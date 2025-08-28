@@ -20,7 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { Topic, addTopic, getTopics } from "@/services/topic-service";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCourses, Course } from "@/services/course-service";
+import { getCourses, getStudentCourses, Course } from "@/services/course-service";
 import { CreateTopicDialog } from "@/components/create-topic-dialog";
 
 
@@ -31,16 +31,35 @@ export default function TopicsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const canCreateTopic = user.role === "student" || user.role === "tutor" || user.role === "lecturer";
+  const isStudent = user.role === 'student';
 
   useEffect(() => {
+    if (!user?.id) return;
+
     const fetchTopicsAndCourses = async () => {
+        setLoading(true);
         try {
-            const [fetchedTopics, fetchedCourses] = await Promise.all([
-              getTopics(),
-              getCourses()
-            ]);
-            setTopics(fetchedTopics.sort((a,b) => (b.replies?.[b.replies.length-1]?.timestamp || 0) > (a.replies?.[a.replies.length-1]?.timestamp || 0) ? 1 : -1));
+            let fetchedCourses: Course[];
+            if (isStudent) {
+                fetchedCourses = await getStudentCourses(user.id);
+            } else {
+                fetchedCourses = await getCourses();
+            }
             setCourses(fetchedCourses);
+
+            const allTopics = await getTopics();
+            
+            // For students, filter topics to only those in their courses or general topics
+            if (isStudent) {
+                 const studentCourseTitles = new Set(fetchedCourses.map(c => c.title));
+                 const filteredTopics = allTopics.filter(topic => 
+                    topic.course === "General" || studentCourseTitles.has(topic.course)
+                 );
+                 setTopics(filteredTopics.sort((a,b) => (b.replies?.[b.replies.length-1]?.timestamp || 0) > (a.replies?.[a.replies.length-1]?.timestamp || 0) ? 1 : -1));
+            } else {
+                 setTopics(allTopics.sort((a,b) => (b.replies?.[b.replies.length-1]?.timestamp || 0) > (a.replies?.[a.replies.length-1]?.timestamp || 0) ? 1 : -1));
+            }
+
         } catch (error) {
             toast({ title: "Error fetching page data", variant: "destructive" });
         } finally {
@@ -48,7 +67,7 @@ export default function TopicsPage() {
         }
     };
     fetchTopicsAndCourses();
-  }, [toast]);
+  }, [toast, user?.id, isStudent]);
 
 
   const handleTopicCreated = (newTopic: Topic) => {
