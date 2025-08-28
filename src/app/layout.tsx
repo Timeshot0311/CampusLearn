@@ -13,6 +13,7 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "CampusLearn",
   description: "The modern learning management system.",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
