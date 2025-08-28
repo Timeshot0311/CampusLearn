@@ -1,6 +1,6 @@
 
 import { db, storage } from '@/lib/firebase';
-import { collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc, query, where } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export type Lesson = {
@@ -38,6 +38,14 @@ export async function getCourses(): Promise<Course[]> {
     if (!db) return [];
     const coursesCollection = collection(db, 'courses');
     const snapshot = await getDocs(coursesCollection);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course));
+}
+
+export async function getStudentCourses(studentId: string): Promise<Course[]> {
+    if (!db) return [];
+    const coursesCollection = collection(db, 'courses');
+    const q = query(coursesCollection, where("enrolledStudents", "array-contains", studentId));
+    const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course));
 }
 

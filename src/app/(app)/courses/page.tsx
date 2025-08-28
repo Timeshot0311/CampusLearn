@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Course, getCourses, addCourse } from "@/services/course-service";
+import { Course, getCourses, addCourse, getStudentCourses } from "@/services/course-service";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
@@ -161,11 +161,20 @@ export default function CoursesPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const isLecturerOrAdmin = user?.role === 'lecturer' || user?.role === 'admin';
+  const isStudent = user?.role === 'student';
 
   useEffect(() => {
+    if (!user?.id) return;
+
     const fetchCourses = async () => {
+      setLoading(true);
       try {
-        const fetchedCourses = await getCourses();
+        let fetchedCourses;
+        if (isStudent) {
+            fetchedCourses = await getStudentCourses(user.id);
+        } else {
+            fetchedCourses = await getCourses();
+        }
         setCourses(fetchedCourses);
       } catch (error) {
         toast({
@@ -178,7 +187,7 @@ export default function CoursesPage() {
       }
     };
     fetchCourses();
-  }, [toast]);
+  }, [toast, user?.id, isStudent]);
   
   const handleCreateCourse = async (courseData: Omit<Course, 'id' | 'modules' | 'progress'| 'published'>) => {
     try {

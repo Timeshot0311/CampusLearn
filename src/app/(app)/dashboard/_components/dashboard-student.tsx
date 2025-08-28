@@ -29,9 +29,10 @@ import { aiTutoringAssistant } from "@/ai/flows/ai-tutoring-assistant";
 import { getLearningRecommendations } from "@/ai/flows/learning-recommendations";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { Course, getCourses } from "@/services/course-service";
+import { Course, getStudentCourses } from "@/services/course-service";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Assignment, getStudentAssignments } from "@/services/assignment-service";
+import { useAuth } from "@/hooks/use-auth";
 
 
 function CourseCard({ course }: { course: Course }) {
@@ -74,6 +75,7 @@ function CourseCard({ course }: { course: Course }) {
 
 export function DashboardStudent() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [deadlines, setDeadlines] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,12 +92,14 @@ export function DashboardStudent() {
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
 
   useEffect(() => {
+    if (!user?.id) return;
+
     const fetchData = async () => {
         setLoading(true);
         try {
             const [fetchedCourses, fetchedAssignments] = await Promise.all([
-                getCourses(),
-                getStudentAssignments("student-id-placeholder") // In a real app, use the actual student ID
+                getStudentCourses(user.id),
+                getStudentAssignments(user.id)
             ]);
             // For the dashboard, we only show a few courses
             setCourses(fetchedCourses.slice(0, 2));
@@ -111,7 +115,7 @@ export function DashboardStudent() {
         }
     };
     fetchData();
-  }, [toast]);
+  }, [toast, user?.id]);
 
 
   const handleAskTutor = async () => {
