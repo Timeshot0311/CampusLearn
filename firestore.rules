@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -14,7 +13,7 @@ service cloud.firestore {
     }
     
     function getUserRole(userId) {
-      return get(/databases/$(database)/documents/Users/$(userId)).data.role;
+      return get(/databases/$(database)/documents/users/$(userId)).data.role;
     }
     
     function isStudent(userId) {
@@ -31,74 +30,81 @@ service cloud.firestore {
     }
 
     // Collections
-    match /Users/{userId} {
+    match /users/{userId} {
       allow read: if isAuth();
-      allow create: if isAuth() && isOwner(userId);
+      // Corrected Rule: Allow a user to create their own document.
+      allow create: if isAuth() && request.auth.uid == userId;
       allow update: if isAuth() && (isOwner(userId) || isAdmin(request.auth.uid));
       allow delete: if isAuth() && isAdmin(request.auth.uid);
     }
 
-    match /Courses/{courseId} {
-      allow read: if isAuth() && (resource.data.published == true || isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
+    match /courses/{courseId} {
+      // Corrected Rule: Allow students to read courses they are enrolled in.
+      allow read: if isAuth() && 
+            (resource.data.published == true || 
+            request.auth.uid in resource.data.enrolledStudents || 
+            isTutorOrLecturer(request.auth.uid) || 
+            isAdmin(request.auth.uid));
       allow create: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
       allow update, delete: if isAuth() && (resource.data.ownerId == request.auth.uid || isAdmin(request.auth.uid));
     }
 
-    match /Topics/{topicId} {
+    match /topics/{topicId} {
       allow read, create: if isAuth();
-      allow update: if isAuth() && (resource.data.createdBy == request.auth.uid || isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
+      // Corrected Rule: Allow any authenticated user to update a topic to post replies.
+      allow update: if isAuth();
       allow delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
     }
 
-    match /LearningMaterials/{materialId} {
+    match /learningMaterials/{materialId} {
       allow read: if isAuth();
       allow create, update, delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
     }
 
-    match /Assignments/{assignmentId} {
+    match /assignments/{assignmentId} {
         allow read: if isAuth();
         allow create, update, delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
     }
 
-    match /Submissions/{submissionId} {
+    match /submissions/{submissionId} {
       allow read: if isAuth() && (isOwner(resource.data.studentId) || isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
       allow create: if isAuth() && isStudent(request.auth.uid);
       allow update: if isAuth() && isOwner(resource.data.studentId);
       allow delete: if isAuth() && isAdmin(request.auth.uid);
     }
 
-    match /Quizzes/{quizId} {
+    match /quizzes/{quizId} {
       allow read: if isAuth();
       allow create, update, delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
     }
 
-    match /Attempts/{attemptId} {
+    match /attempts/{attemptId} {
        allow read: if isAuth() && (isOwner(resource.data.studentId) || isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
        allow create: if isAuth() && isStudent(request.auth.uid);
        allow update, delete: if false; // Attempts should be immutable
     }
 
-    match /Grades/{gradeId} {
+    match /grades/{gradeId} {
       allow read: if isAuth(); // Students should be able to read their grades
       allow create, update: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
       allow delete: if isAuth() && isAdmin(request.auth.uid);
     }
 
-    match /Discussions/{discussionId} {
+    match /discussions/{discussionId} {
       allow read, write: if isAuth();
     }
     
-    match /Announcements/{announcementId} {
+    match /announcements/{announcementId} {
       allow read: if isAuth();
       allow create, update, delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
     }
     
-    match /Notifications/{notifId} {
+    match /notifications/{notifId} {
         allow read, update: if isAuth() && isOwner(resource.data.userId);
         allow create, delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
     }
 
-    match /AuditLogs/{logId} {
+    match /auditLogs/{logId} {
       allow read: if isAuth() && isAdmin(request.auth.uid);
       allow create, update, delete: if false; // Logs should be immutable and created server-side
     }
