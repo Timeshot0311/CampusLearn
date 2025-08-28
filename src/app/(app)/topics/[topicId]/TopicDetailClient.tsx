@@ -50,14 +50,14 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
   const isClosed = topic?.status === "Closed";
   
   const canReply = (() => {
-    if (isClosed || !topic) return false;
-    if (user.role === 'admin' || user.role === 'student') return true;
-    if (isTutorOrLecturer) {
+      if (isClosed || !topic) return false;
+      if (isStudent || user.role === 'admin') return true;
+      if (isTutorOrLecturer) {
         const courseForTopic = courses.find(c => c.title === topic.course);
         if (!courseForTopic) return false;
         return user.assignedCourses?.includes(courseForTopic.id) || false;
-    }
-    return false;
+      }
+      return false;
   })();
 
   const isSubscribed = topic?.subscribers?.includes(user.id);
@@ -99,7 +99,11 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
     try {
         await addReply(topic.id, reply);
 
-        // Send notifications to subscribers
+        // Optimistically update the UI immediately
+        setTopic(prev => prev ? { ...prev, replies: [...(prev.replies || []), reply] } : null);
+        setNewReply("");
+        
+        // Send notifications to subscribers in the background
         if (topic.subscribers && topic.subscribers.length > 0) {
             for (const subscriberId of topic.subscribers) {
                 if (subscriberId !== user.id) { // Don't notify the person who replied
@@ -114,12 +118,9 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
             }
         }
 
-
-        setTopic(prev => prev ? { ...prev, replies: [...(prev.replies || []), reply] } : null);
-        setNewReply("");
         toast({ title: "Reply posted!" });
     } catch (error) {
-        toast({ title: "Error posting reply", variant: "destructive" });
+        toast({ title: "Error posting reply", description: "Your message was posted, but there was an issue sending notifications.", variant: "destructive" });
     } finally {
         setReplying(false);
     }
