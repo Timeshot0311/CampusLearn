@@ -23,7 +23,7 @@ import { getTopic, updateTopic, addReply, addMaterial, Topic, TopicStatus, Topic
 import { Skeleton } from "@/components/ui/skeleton";
 import { QuizGeneratorDialog } from "@/components/quiz-generator-dialog";
 import { QuizTakerDialog } from "@/components/quiz-taker-dialog";
-import { Course, getCourses, getStudentCourses } from "@/services/course-service";
+import { Course, getCourses } from "@/services/course-service";
 
 
 function MaterialIcon({ type }: { type: string }) {
@@ -49,14 +49,17 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
   const isTutorOrLecturerOrAdmin = isTutorOrLecturer || user.role === "admin";
   const isClosed = topic?.status === "Closed";
   
-  const canTutorReply = () => {
-    if (!isTutorOrLecturer || !topic) return false;
-    const courseForTopic = courses.find(c => c.title === topic.course);
-    if (!courseForTopic) return false; // Tutor can't reply if course doesn't exist
-    return user.assignedCourses?.includes(courseForTopic.id) || false;
-  }
-  
-  const canReply = (!isClosed && (user.role === 'student' || canTutorReply() || user.role === 'admin'));
+  const canReply = (() => {
+    if (isClosed || !topic) return false;
+    if (user.role === 'admin' || user.role === 'student') return true;
+    if (isTutorOrLecturer) {
+        const courseForTopic = courses.find(c => c.title === topic.course);
+        if (!courseForTopic) return false;
+        return user.assignedCourses?.includes(courseForTopic.id) || false;
+    }
+    return false;
+  })();
+
   const isSubscribed = topic?.subscribers?.includes(user.id);
 
   useEffect(() => {
@@ -366,5 +369,3 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
     </div>
   );
 }
-
-    
