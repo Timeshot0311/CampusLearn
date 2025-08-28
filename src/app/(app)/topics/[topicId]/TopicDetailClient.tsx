@@ -23,7 +23,7 @@ import { getTopic, updateTopic, addReply, addMaterial, Topic, TopicStatus, Topic
 import { Skeleton } from "@/components/ui/skeleton";
 import { QuizGeneratorDialog } from "@/components/quiz-generator-dialog";
 import { QuizTakerDialog } from "@/components/quiz-taker-dialog";
-import { Course, getCourses } from "@/services/course-service";
+import { Course, getCourses, getStudentCourses } from "@/services/course-service";
 
 
 function MaterialIcon({ type }: { type: string }) {
@@ -44,6 +44,7 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
   const [replying, setReplying] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  const isStudent = user.role === 'student';
   const isTutorOrLecturer = user.role === "tutor" || user.role === "lecturer";
   const isTutorOrLecturerOrAdmin = isTutorOrLecturer || user.role === "admin";
   const isClosed = topic?.status === "Closed";
@@ -59,15 +60,17 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
   const isSubscribed = topic?.subscribers?.includes(user.id);
 
   useEffect(() => {
-    if (!topicId) return;
+    if (!topicId || !user.id) return;
     const fetchTopicData = async () => {
         try {
-            const [fetchedTopic, fetchedCourses] = await Promise.all([
-              getTopic(topicId),
-              getCourses()
-            ]);
+            const fetchedTopic = await getTopic(topicId);
             setTopic(fetchedTopic);
-            setCourses(fetchedCourses);
+
+            // Students don't need the full course list, other roles might for tutor checks etc.
+            if (!isStudent) {
+                const fetchedCourses = await getCourses();
+                setCourses(fetchedCourses);
+            }
         } catch (error) {
             toast({ title: "Error fetching topic data", variant: "destructive" });
         } finally {
@@ -75,7 +78,7 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
         }
     };
     fetchTopicData();
-  }, [topicId, toast]);
+  }, [topicId, toast, user.id, isStudent]);
 
 
   const handleSendReply = async () => {
@@ -130,7 +133,7 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
     try {
         await updateTopic(topic.id, { subscribers: newSubscribers });
         setTopic(prev => prev ? { ...prev, subscribers: newSubscribers } : null);
-        toast({ title: isSubscribed ? "Unsubscribed" : "Subscribed!", description: `You will ${isSubscribed ? 'no longer' : 'now'} receive notifications for this topic.`});
+        toast({ title: isSubscribed ? "Unsubscribed" : "Subscribed!", description: `You will ${isSubcribed ? 'no longer' : 'now'} receive notifications for this topic.`});
     } catch (error) {
         toast({ title: "Error updating subscription", variant: "destructive" });
     }
