@@ -187,7 +187,7 @@ export default function CoursesPage() {
       }
     };
     fetchCourses();
-  }, [toast, user?.id, isStudent]);
+  }, [toast, user?.id, user.role, isStudent]);
   
   const handleCreateCourse = async (courseData: Omit<Course, 'id' | 'modules' | 'progress'| 'published'>) => {
     try {

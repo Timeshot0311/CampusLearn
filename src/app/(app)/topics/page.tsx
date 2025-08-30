@@ -67,7 +67,7 @@ export default function TopicsPage() {
         }
     };
     fetchTopicsAndCourses();
-  }, [toast, user?.id, isStudent]);
+  }, [toast, user?.id, user.role, isStudent]);
 
 
   const handleTopicCreated = (newTopic: Topic) => {
