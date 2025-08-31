@@ -1,5 +1,8 @@
+
 import type {NextConfig} from 'next';
 import withPWAInit from "@ducanh2912/next-pwa";
+
+const isTurbopack = process.env.TURBOPACK;
 
 const withPWA = withPWAInit({
   dest: "public",
@@ -34,4 +37,5 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withPWA(nextConfig);
+// Disable PWA when using Turbopack, as it's not yet supported.
+export default isTurbopack ? nextConfig : withPWA(nextConfig);
