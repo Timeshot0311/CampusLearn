@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -77,9 +78,9 @@ export function QuizTakerDialog({ quiz }: QuizTakerDialogProps) {
                 <Card key={qIndex}>
                     <CardHeader>
                         <CardTitle className="text-lg">Question {qIndex + 1}</CardTitle>
-                        <p className="pt-2">{question.text}</p>
                     </CardHeader>
                     <CardContent>
+                    <p className="mb-4">{question.text}</p>
                     <RadioGroup
                         value={answers[qIndex]?.toString()}
                         onValueChange={(value) => handleAnswerChange(qIndex, parseInt(value))}
