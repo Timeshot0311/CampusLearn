@@ -96,15 +96,19 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
   const isClosed = topic?.status === "Closed";
   
   const canReply = (() => {
-      if (isClosed || !topic) return false;
-      if (isStudent || user.role === 'admin') return true;
-      if (isTutorOrLecturer) {
-        const courseForTopic = courses.find(c => c.title === topic.course);
-        if (!courseForTopic) return false;
-        return user.assignedCourses?.includes(courseForTopic.id) || false;
-      }
-      return false;
-  })();
+    if (isClosed || !topic) return false;
+    if (isStudent || user.role === 'admin') return true;
+    if (isTutorOrLecturer) {
+        if (!user.assignedCourses) return false;
+        // Get the titles of the courses the user is assigned to
+        const assignedCourseTitles = user.assignedCourses
+            .map(id => courses.find(c => c.id === id)?.title)
+            .filter((title): title is string => !!title);
+        // Check if the topic's course is in the list of assigned course titles
+        return assignedCourseTitles.includes(topic.course);
+    }
+    return false;
+})();
 
   const isSubscribed = topic?.subscribers?.includes(user.id);
 
@@ -115,7 +119,8 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
             const fetchedTopic = await getTopic(topicId);
             setTopic(fetchedTopic);
 
-            if (!isStudent) {
+            // Tutors/lecturers need the full course list to check permissions
+            if (isTutorOrLecturerOrAdmin) {
                 const fetchedCourses = await getCourses();
                 setCourses(fetchedCourses);
             }
@@ -126,7 +131,7 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
         }
     };
     fetchTopicData();
-  }, [topicId, toast, user.id, isStudent]);
+  }, [topicId, toast, user.id, isTutorOrLecturerOrAdmin]);
 
 
   const handleSendReply = async () => {
