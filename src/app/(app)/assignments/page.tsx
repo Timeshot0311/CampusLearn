@@ -21,7 +21,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { generateAssignmentFeedback } from "@/ai/flows/ai-powered-feedback-generator";
 import { Loader2 } from "lucide-react";
 import { Assignment, Submission, getStudentAssignments, getTutorSubmissions, updateSubmission, addSubmission, SubmissionStatus } from "@/services/assignment-service";
 import { Course, getCourses, getStudentCourses } from "@/services/course-service";
@@ -99,29 +98,7 @@ function GradeDialog({ submission, onGraded }: { submission: Submission; onGrade
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [grade, setGrade] = useState("");
-  const [guidelines, setGuidelines] = useState("");
   const [open, setOpen] = useState(false);
-
-  const handleGenerateFeedback = async () => {
-    setLoading(true);
-    try {
-      const result = await generateAssignmentFeedback({
-        studentName: submission.studentName,
-        assignmentDescription: submission.assignmentName,
-        studentSubmission: submission.submissionContent,
-        tutorFeedbackGuidelines: guidelines,
-        courseName: submission.courseTitle,
-      });
-      setFeedback(result.feedback);
-    } catch (error) {
-      toast({
-        title: "Error Generating Feedback",
-        description: "There was an error generating feedback. Please try again.",
-        variant: "destructive",
-      });
-    }
-    setLoading(false);
-  };
 
   const handleSubmitGrade = async () => {
     if (!user) return;
@@ -189,19 +166,6 @@ function GradeDialog({ submission, onGraded }: { submission: Submission; onGrade
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="guidelines">Feedback Guidelines (Optional)</Label>
-            <Textarea 
-                id="guidelines" 
-                placeholder="e.g., Focus on their understanding of the core concepts." 
-                value={guidelines}
-                onChange={(e) => setGuidelines(e.target.value)}
-            />
-          </div>
-          <Button onClick={handleGenerateFeedback} disabled={loading} className="w-fit">
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {loading ? "Generating..." : "Generate AI Feedback"}
-          </Button>
-          <div className="grid gap-2">
             <Label htmlFor="feedback">Feedback</Label>
             <Textarea id="feedback" value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={8} placeholder="Type or generate feedback here."/>
           </div>
@@ -210,7 +174,10 @@ function GradeDialog({ submission, onGraded }: { submission: Submission; onGrade
             <DialogClose asChild>
                 <Button variant="outline">Cancel</Button>
             </DialogClose>
-          <Button onClick={handleSubmitGrade} disabled={loading || !feedback.trim() || !grade.trim()}>Submit Grade</Button>
+          <Button onClick={handleSubmitGrade} disabled={loading || !feedback.trim() || !grade.trim()}>
+             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+             Submit Grade
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
