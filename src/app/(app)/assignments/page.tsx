@@ -213,7 +213,7 @@ function TutorSubmissions() {
                                     <div className="flex items-center gap-2">
                                         <Avatar className="h-8 w-8">
                                         <AvatarImage src={submission.avatar} alt={submission.student} />
-                                        <AvatarFallback>{submission.student.charAt(0)}</AvatarFallback>
+                                        <AvatarFallback>{submission.student?.charAt(0) || 'S'}</AvatarFallback>
                                         </Avatar>
                                         <span className="font-medium">{submission.student}</span>
                                     </div>
