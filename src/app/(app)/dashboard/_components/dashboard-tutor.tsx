@@ -28,7 +28,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { FileEdit, Lightbulb, MessageSquare } from "lucide-react";
+import { Lightbulb, MessageSquare } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Submission, getTutorSubmissions } from "@/services/assignment-service";
@@ -218,20 +218,6 @@ export function DashboardTutor() {
                 The "Smart Quiz Generation" feature can now be found on the topic detail pages to better associate quizzes with specific learning discussions.
                 </CardDescription>
             </CardHeader>
-        </Card>
-         <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-                <FileEdit className="h-6 w-6 text-primary"/>
-                <CardTitle className="font-headline">AI Feedback Generator</CardTitle>
-            </div>
-            <CardDescription>
-              Draft personalized feedback for student assignments.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <FeedbackGeneratorDialog />
-          </CardFooter>
         </Card>
       </div>
     </div>
