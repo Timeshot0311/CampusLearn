@@ -22,7 +22,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { User, getUsers } from "@/services/user-service";
+import { User, getUsers, updateUser } from "@/services/user-service";
 import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EnrollStudentDialog } from "@/components/enroll-student-dialog";
@@ -245,7 +245,7 @@ const AssignStaffDialog = ({ course, onStaffAssigned, children }: { course: Cour
     const [tutors, setTutors] = useState<MultiSelectOption[]>([]);
     const [assignedLecturers, setAssignedLecturers] = useState<string[]>([]);
     const [assignedTutors, setAssignedTutors] = useState<string[]>([]);
-
+    
     const isAdmin = user?.role === 'admin';
     const isLecturer = user?.role === 'lecturer';
 
@@ -264,9 +264,36 @@ const AssignStaffDialog = ({ course, onStaffAssigned, children }: { course: Cour
     }, [open, course]);
 
     const handleSave = async () => {
-        const updatedCourseData = { assignedLecturers, assignedTutors };
         try {
+            // Update course document
+            const updatedCourseData = { assignedLecturers, assignedTutors };
             await updateCourse(course.id, updatedCourseData);
+
+            // Determine changes in staff
+            const originalStaff = [...(course.assignedLecturers || []), ...(course.assignedTutors || [])];
+            const newStaff = [...assignedLecturers, ...assignedTutors];
+
+            const addedStaff = newStaff.filter(id => !originalStaff.includes(id));
+            const removedStaff = originalStaff.filter(id => !newStaff.includes(id));
+
+            // Update user documents for added staff
+            for (const userId of addedStaff) {
+                const staffUser = allUsers.find(u => u.id === userId);
+                if (staffUser) {
+                    const updatedCourses = [...(staffUser.assignedCourses || []), course.id];
+                    await updateUser(userId, { assignedCourses: updatedCourses });
+                }
+            }
+
+            // Update user documents for removed staff
+            for (const userId of removedStaff) {
+                const staffUser = allUsers.find(u => u.id === userId);
+                if (staffUser) {
+                    const updatedCourses = (staffUser.assignedCourses || []).filter(cId => cId !== course.id);
+                    await updateUser(userId, { assignedCourses: updatedCourses });
+                }
+            }
+
             toast({ title: "Staff Assigned!" });
             onStaffAssigned({ ...course, ...updatedCourseData });
             setOpen(false);
