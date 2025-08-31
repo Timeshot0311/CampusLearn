@@ -37,7 +37,7 @@ export function QuizTakerDialog({ quiz }: QuizTakerDialogProps) {
   const handleSubmit = () => {
     let correctAnswers = 0;
     quiz.questions.forEach((q, index) => {
-      if (answers[index] === q.correctIndex) {
+      if (answers[index] === q.answer) {
         correctAnswers++;
       }
     });
@@ -80,7 +80,7 @@ export function QuizTakerDialog({ quiz }: QuizTakerDialogProps) {
                         <CardTitle className="text-lg">Question {qIndex + 1}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                    <p className="mb-4 font-medium">{question.text}</p>
+                    <p className="mb-4 font-medium">{question.question}</p>
                     <RadioGroup
                         value={answers[qIndex]?.toString()}
                         onValueChange={(value) => handleAnswerChange(qIndex, parseInt(value))}
@@ -115,12 +115,12 @@ export function QuizTakerDialog({ quiz }: QuizTakerDialogProps) {
                     <h3 className="text-xl font-bold mb-4">Review Your Answers</h3>
                     {quiz.questions.map((question, qIndex) => {
                         const userAnswer = answers[qIndex];
-                        const isCorrect = userAnswer === question.correctIndex;
+                        const isCorrect = userAnswer === question.answer;
                         return (
                             <Card key={qIndex} className="mb-4">
                                 <CardHeader>
                                     <CardTitle className="text-base flex justify-between items-center">
-                                        <span>{qIndex + 1}. {question.text}</span>
+                                        <span>{qIndex + 1}. {question.question}</span>
                                         {isCorrect ? <CheckCircle className="text-green-500" /> : <XCircle className="text-red-500" />}
                                     </CardTitle>
                                 </CardHeader>
@@ -128,7 +128,7 @@ export function QuizTakerDialog({ quiz }: QuizTakerDialogProps) {
                                     <div className="space-y-2">
                                         {question.options.map((option, oIndex) => {
                                             const isUserAnswer = oIndex === userAnswer;
-                                            const isCorrectAnswer = oIndex === question.correctIndex;
+                                            const isCorrectAnswer = oIndex === question.answer;
 
                                             return (
                                                 <div key={oIndex} className={cn(
