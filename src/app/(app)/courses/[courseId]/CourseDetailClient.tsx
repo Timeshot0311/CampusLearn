@@ -147,7 +147,11 @@ const LessonForm = ({ courseId, moduleId, onLessonSaved, onCancel, existingLesso
                 let updatedLessons;
                 if (existingLesson) {
                     // Update existing lesson
-                    updatedLessons = m.lessons.map(l => l.id === existingLesson.id ? { ...l, title, type, content } : l);
+                    updatedLessons = m.lessons.map(l => 
+                        l.id === existingLesson.id 
+                        ? { ...l, id: existingLesson.id, title, type, content } 
+                        : l
+                    );
                 } else {
                     // Add new lesson
                     const newLesson: Lesson = { id: uuidv4(), title, type, content, completed: false };
@@ -885,3 +889,5 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
     </div>
   );
 }
+
+    
