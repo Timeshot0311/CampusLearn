@@ -6,7 +6,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 export type Lesson = {
     id: string;
     title: string;
-    type: 'article' | 'video' | 'quiz' | 'pdf' | 'youtube';
+    type: 'article' | 'video' | 'audio' | 'quiz' | 'file' | 'youtube';
     content: string; // For article: markdown; for others: URL
     duration?: string; // Optional
     completed: boolean;

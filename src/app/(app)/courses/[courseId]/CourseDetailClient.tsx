@@ -5,11 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { PlayCircle, FileText, CheckCircle, BookOpen, Youtube, File, ClipboardCheck, Trash2, PlusCircle, Loader2, Upload, Pencil, Users, Send, UserPlus, FileEdit } from "lucide-react";
+import { PlayCircle, FileText, CheckCircle, BookOpen, Youtube, File, ClipboardCheck, Trash2, PlusCircle, Loader2, Upload, Pencil, Users, Send, UserPlus, FileEdit, Music, Video } from "lucide-react";
 import { Course, Module, Lesson, updateCourse, uploadCourseFile, getCourse } from "@/services/course-service";
 import { Topic, addTopic } from "@/services/topic-service";
 import { Assignment, addAssignment, getCourseAssignments } from "@/services/assignment-service";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -36,15 +36,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const LessonIcon = ({ type }: { type: Lesson['type'] }) => {
     switch (type) {
         case "video":
-            return <PlayCircle className="h-5 w-5 text-primary" />;
+            return <Video className="h-5 w-5 text-fuchsia-500" />;
+        case "audio":
+            return <Music className="h-5 w-5 text-rose-500" />;
         case "article":
             return <BookOpen className="h-5 w-5 text-blue-500" />;
         case "quiz":
             return <ClipboardCheck className="h-5 w-5 text-amber-500" />;
         case "youtube":
             return <Youtube className="h-5 w-5 text-red-500" />;
-        case "pdf":
-            return <File className="h-5 w-5 text-red-700" />;
+        case "file":
+            return <File className="h-5 w-5 text-indigo-500" />;
         default:
             return <FileText className="h-5 w-5 text-gray-500" />;
     }
@@ -80,17 +82,32 @@ const LessonContentDisplay = ({ lesson, courseTitle }: { lesson: Lesson | null; 
                         ></iframe>
                     </div>
                 );
-            case 'pdf':
+            case 'file':
                 return (
-                    <div className="p-8 flex flex-col items-center justify-center text-center gap-4 aspect-video bg-muted/50 rounded-lg">
-                        <FileText className="h-16 w-16 text-muted-foreground"/>
-                        <h3 className="text-lg font-semibold">PDF Document: {lesson.title}</h3>
-                        <p className="text-muted-foreground">This lesson is a PDF file. Click below to view it in a new tab.</p>
-                        <a href={lesson.content} target="_blank" rel="noopener noreferrer">
-                            <Button>Download PDF</Button>
-                        </a>
+                    <div className="p-2 h-[80vh]">
+                        <iframe 
+                            src={`https://docs.google.com/gview?url=${lesson.content}&embedded=true`} 
+                            className="w-full h-full border-0 rounded-lg"
+                            title={lesson.title}
+                         />
                     </div>
                 );
+            case 'video':
+                 return (
+                    <div className="p-2">
+                        <video controls src={lesson.content} className="w-full rounded-lg aspect-video">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                 );
+            case 'audio':
+                 return (
+                    <div className="p-8">
+                        <audio controls src={lesson.content} className="w-full">
+                             Your browser does not support the audio tag.
+                        </audio>
+                    </div>
+                 );
             default:
                 return <div className="p-8 flex items-center justify-center text-center text-muted-foreground aspect-video">Select a lesson to get started.</div>;
         }
@@ -115,16 +132,27 @@ const LessonForm = ({ courseId, moduleId, onLessonSaved, onCancel, existingLesso
     const [type, setType] = useState<Lesson['type']>(existingLesson?.type || 'article');
     const [content, setContent] = useState(existingLesson?.content || '');
     const [uploading, setUploading] = useState(false);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, forArticle: boolean = false) => {
         if (!e.target.files) return;
         const file = e.target.files[0];
         if (file && courseId) {
             setUploading(true);
             try {
                 const downloadUrl = await uploadCourseFile(courseId, file);
-                setContent(downloadUrl);
-                toast({ title: "PDF Uploaded", description: "The file URL has been added to the content field." });
+                
+                if (forArticle) {
+                    const markdownLink = `\n\n[${file.name}](${downloadUrl})\n\n`;
+                    const cursorPosition = textareaRef.current?.selectionStart || content.length;
+                    const newContent = content.slice(0, cursorPosition) + markdownLink + content.slice(cursorPosition);
+                    setContent(newContent);
+                    toast({ title: "File Uploaded", description: "A link to the file has been inserted into the article." });
+                } else {
+                    setContent(downloadUrl);
+                    toast({ title: "File Uploaded", description: "The file URL has been set as the lesson content." });
+                }
             } catch (error) {
                 toast({ title: "Upload Failed", variant: "destructive" });
             } finally {
@@ -148,7 +176,7 @@ const LessonForm = ({ courseId, moduleId, onLessonSaved, onCancel, existingLesso
             // Update existing lesson
             updatedModules = currentCourse.modules.map(m => {
                 if (m.id === moduleId) {
-                    return { ...m, lessons: m.lessons.map(l => l.id === existingLesson.id ? { ...l, title, type, content } : l) };
+                    return { ...m, lessons: m.lessons.map(l => l.id === existingLesson.id ? { ...existingLesson, title, type, content } : l) };
                 }
                 return m;
             });
@@ -187,23 +215,55 @@ const LessonForm = ({ courseId, moduleId, onLessonSaved, onCancel, existingLesso
                     <SelectContent>
                         <SelectItem value="article">Article</SelectItem>
                         <SelectItem value="youtube">YouTube Video</SelectItem>
-                        <SelectItem value="pdf">PDF</SelectItem>
+                        <SelectItem value="file">File (PDF, PPT)</SelectItem>
+                        <SelectItem value="video">Video File</SelectItem>
+                        <SelectItem value="audio">Audio File</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
             <div className="grid gap-2">
                 <Label>Content</Label>
-                {type === 'article' && <Textarea placeholder="Write your article content here... Markdown is supported." value={content} onChange={e => setContent(e.target.value)} rows={10}/>}
+                {type === 'article' && (
+                    <div className="relative">
+                        <Textarea 
+                            ref={textareaRef}
+                            placeholder="Write your article content here... Markdown is supported." 
+                            value={content} 
+                            onChange={e => setContent(e.target.value)} 
+                            rows={10}
+                         />
+                         <div className="absolute top-2 right-2">
+                            <Button asChild variant="outline" size="sm">
+                                <label htmlFor="article-file-upload" className="cursor-pointer flex items-center gap-2">
+                                     {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4"/>}
+                                    Upload File
+                                </label>
+                            </Button>
+                            <Input id="article-file-upload" type="file" className="hidden" accept=".pdf,.ppt,.pptx,.mp3,.wav,.mp4,.mov" onChange={(e) => handleFileUpload(e, true)} disabled={uploading}/>
+                         </div>
+                    </div>
+                )}
                 {type === 'youtube' && <Input placeholder="https://www.youtube.com/watch?v=..." value={content} onChange={e => setContent(e.target.value)}/>}
-                {type === 'pdf' && (
+                {type === 'file' && (
                      <div className="flex items-center gap-2">
-                        <Input placeholder="Upload a PDF file or paste a URL" value={content} onChange={e => setContent(e.target.value)} disabled={uploading}/>
+                        <Input placeholder="Upload a PDF/PPT file or paste a URL" value={content} onChange={e => setContent(e.target.value)} disabled={uploading}/>
                         <Button asChild variant="outline" size="icon">
-                            <label htmlFor="pdf-upload" className="cursor-pointer">
+                            <label htmlFor="file-upload" className="cursor-pointer">
                                 {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4"/>}
                             </label>
                         </Button>
-                        <Input id="pdf-upload" type="file" className="hidden" accept=".pdf" onChange={handlePdfUpload} disabled={uploading}/>
+                        <Input id="file-upload" type="file" className="hidden" accept=".pdf,.ppt,.pptx" onChange={handleFileUpload} disabled={uploading}/>
+                     </div>
+                )}
+                {(type === 'video' || type === 'audio') && (
+                     <div className="flex items-center gap-2">
+                        <Input placeholder={`Upload a ${type} file or paste a URL`} value={content} onChange={e => setContent(e.target.value)} disabled={uploading}/>
+                        <Button asChild variant="outline" size="icon">
+                            <label htmlFor="media-upload" className="cursor-pointer">
+                                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4"/>}
+                            </label>
+                        </Button>
+                        <Input id="media-upload" type="file" className="hidden" accept={type === 'video' ? 'video/*' : 'audio/*'} onChange={handleFileUpload} disabled={uploading}/>
                      </div>
                 )}
             </div>
