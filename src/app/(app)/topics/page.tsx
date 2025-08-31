@@ -1,5 +1,4 @@
 
-
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
@@ -129,7 +128,7 @@ export default function TopicsPage() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
-  const [statusFilter, setStatusFilter] = useState<TopicStatus | "All">("All");
+  const [statusFilter, setStatusFilter] = useState<TopicStatus | "All">("Open");
 
   const canCreateTopic = user.role === "student" || user.role === "tutor" || user.role === "lecturer";
   const isStudent = user.role === 'student';
@@ -217,9 +216,9 @@ export default function TopicsPage() {
 
       <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)}>
         <TabsList>
-            <TabsTrigger value="All">All</TabsTrigger>
             <TabsTrigger value="Open">Open</TabsTrigger>
             <TabsTrigger value="Closed">Closed</TabsTrigger>
+            <TabsTrigger value="All">All</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -262,5 +261,6 @@ export default function TopicsPage() {
 }
 
 const Fallback = AvatarFallback;
+
 
 
