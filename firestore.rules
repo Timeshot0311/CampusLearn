@@ -8,113 +8,62 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isRole(role) {
+      return isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+    
+    function isOneOfRoles(roles) {
+      return isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in roles;
+    }
+
     function isOwner(resourceId) {
       return request.auth.uid == resourceId;
     }
-    
-    function getUserRole(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data.role;
-    }
-    
-    function isStudent(userId) {
-        return getUserRole(userId) == 'student';
+
+    // COURSES
+    match /courses/{courseId} {
+      allow read: if isAuth();
+      allow create: if isOneOfRoles(['admin', 'lecturer']);
+      allow update: if isOneOfRoles(['admin', 'lecturer']);
+      allow delete: if isOneOfRoles(['admin', 'lecturer']);
     }
 
-    function isTutorOrLecturer(userId) {
-      let role = getUserRole(userId);
-      return role == 'tutor' || role == 'lecturer';
-    }
-
-    function isAdmin(userId) {
-      return getUserRole(userId) == 'admin';
-    }
-
-    // Collections
+    // USERS
     match /users/{userId} {
       allow read: if isAuth();
-      // Corrected Rule: Allow a user to create their own document.
-      allow create: if isAuth() && request.auth.uid == userId;
-      // Allow user/admin to update their own profile,
-      // and allow any authenticated user to update ONLY the subscribers list.
-      allow update: if isAuth() && (
-        (isOwner(userId) || isAdmin(request.auth.uid)) ||
-        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['subscribers']))
-      );
-      allow delete: if isAuth() && isAdmin(request.auth.uid);
+      allow create: if isAuth();
+      allow update: if isAuth() && request.auth.uid == userId; // Users can only update their own profile
+      allow delete: if isRole('admin');
     }
 
-    match /courses/{courseId} {
-      // Corrected Rule: Allow students to read courses they are enrolled in.
-      allow read: if isAuth() && 
-            (resource.data.published == true || 
-            request.auth.uid in resource.data.enrolledStudents || 
-            isTutorOrLecturer(request.auth.uid) || 
-            isAdmin(request.auth.uid));
-      allow create: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
-      allow update, delete: if isAuth() && (resource.data.ownerId == request.auth.uid || isAdmin(request.auth.uid));
-    }
-
-    match /topics/{topicId} {
-      allow read, create: if isAuth();
-      allow update: if isAuth() && (
-            isOwner(resource.data.authorId) ||
-            isTutorOrLecturer(request.auth.uid) || 
-            isAdmin(request.auth.uid));
-      allow delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
-    }
-
-    match /learningMaterials/{materialId} {
-      allow read: if isAuth();
-      allow create, update, delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
-    }
-
-    match /assignments/{assignmentId} {
-        allow read: if isAuth();
-        allow create, update, delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
-    }
-
+    // SUBMISSIONS
     match /submissions/{submissionId} {
-      allow read: if isAuth() && (isOwner(resource.data.studentId) || isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
-      allow create: if isAuth() && isStudent(request.auth.uid);
-      allow update: if isAuth() && (isOwner(resource.data.studentId) || isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
-      allow delete: if isAuth() && isAdmin(request.auth.uid);
-    }
-
-    match /quizzes/{quizId} {
       allow read: if isAuth();
-      allow create, update, delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
+      // Students can create, Tutors/Lecturers can update (grade)
+      allow create: if isRole('student');
+      allow update: if isOneOfRoles(['admin', 'tutor', 'lecturer']);
     }
 
-    match /attempts/{attemptId} {
-       allow read: if isAuth() && (isOwner(resource.data.studentId) || isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
-       allow create: if isAuth() && isStudent(request.auth.uid);
-       allow update, delete: if false; // Attempts should be immutable
-    }
-
+    // GRADES
     match /grades/{gradeId} {
-      allow read: if isAuth(); // Students should be able to read their grades
-      allow create, update: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
-      allow delete: if isAuth() && isAdmin(request.auth.uid);
-    }
-
-    match /discussions/{discussionId} {
-      allow read, write: if isAuth();
-    }
-    
-    match /announcements/{announcementId} {
       allow read: if isAuth();
-      allow create, update, delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
+      // Tutors/Lecturers create grades
+      allow create: if isOneOfRoles(['admin', 'tutor', 'lecturer']);
     }
     
-    match /notifications/{notifId} {
-        allow read, update: if isAuth() && isOwner(resource.data.userId);
+    // TOPICS
+    match /topics/{topicId} {
+        allow read: if isAuth();
         allow create: if isAuth();
-        allow delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
+        allow update: if isAuth(); // Allow any auth'd user to update (e.g., add replies, subscribe)
+        allow delete: if isOneOfRoles(['admin', 'lecturer', 'tutor']);
     }
 
-    match /auditLogs/{logId} {
-      allow read: if isAuth() && isAdmin(request.auth.uid);
-      allow create, update, delete: if false; // Logs should be immutable and created server-side
+    // NOTIFICATIONS
+    match /notifications/{notificationId} {
+        allow read: if isAuth() && request.auth.uid == resource.data.userId;
+        allow create: if isAuth();
+        allow update: if isAuth() && request.auth.uid == resource.data.userId;
     }
   }
 }
