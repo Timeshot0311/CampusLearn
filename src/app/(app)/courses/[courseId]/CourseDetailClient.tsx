@@ -142,25 +142,27 @@ const LessonForm = ({ courseId, moduleId, onLessonSaved, onCancel, existingLesso
         const currentCourse = await getCourse(courseId);
         if (!currentCourse) return;
 
-        const updatedModules = currentCourse.modules.map(m => {
-            if (m.id === moduleId) {
-                let updatedLessons;
-                if (existingLesson) {
-                    // Update existing lesson
-                    updatedLessons = m.lessons.map(l => 
-                        l.id === existingLesson.id 
-                        ? { ...l, id: existingLesson.id, title, type, content } 
-                        : l
-                    );
-                } else {
-                    // Add new lesson
-                    const newLesson: Lesson = { id: uuidv4(), title, type, content, completed: false };
-                    updatedLessons = [...m.lessons, newLesson];
+        let updatedModules;
+
+        if (existingLesson) {
+            // Update existing lesson
+            updatedModules = currentCourse.modules.map(m => {
+                if (m.id === moduleId) {
+                    return { ...m, lessons: m.lessons.map(l => l.id === existingLesson.id ? { ...l, title, type, content } : l) };
                 }
-                return { ...m, lessons: updatedLessons };
-            }
-            return m;
-        });
+                return m;
+            });
+        } else {
+            // Add new lesson
+            const newLesson: Lesson = { id: uuidv4(), title, type, content, completed: false };
+             updatedModules = currentCourse.modules.map(m => {
+                if (m.id === moduleId) {
+                    return { ...m, lessons: [...m.lessons, newLesson] };
+                }
+                return m;
+            });
+        }
+
 
         try {
             await updateCourse(courseId, { modules: updatedModules });
@@ -889,5 +891,3 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
     </div>
   );
 }
-
-    
