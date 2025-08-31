@@ -69,7 +69,7 @@ export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
 
     const quizToSave: Omit<Quiz, 'id'> = {
         title: quizTitle,
-        questions: parsedQuizData.quiz
+        questions: parsedQuizData.questions,
     };
 
     onSave(quizToSave);
