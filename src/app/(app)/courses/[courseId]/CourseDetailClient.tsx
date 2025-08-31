@@ -209,7 +209,7 @@ const LessonForm = ({ courseId, moduleId, onLessonSaved, onCancel, existingLesso
             </div>
             <div className="flex gap-2 justify-end">
                 <Button variant="ghost" onClick={onCancel}>Cancel</Button>
-                <Button onClick={handleSave} disabled={uploading}>{existingLesson ? "Save Changes" : "Add Lesson"}</Button>
+                <Button onClick={handleSaveLesson} disabled={uploading}>{existingLesson ? "Save Changes" : "Add Lesson"}</Button>
             </div>
         </div>
     );
