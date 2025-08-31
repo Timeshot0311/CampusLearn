@@ -35,7 +35,12 @@ service cloud.firestore {
       allow read: if isAuth();
       // Corrected Rule: Allow a user to create their own document.
       allow create: if isAuth() && request.auth.uid == userId;
-      allow update: if isAuth() && (isOwner(userId) || isAdmin(request.auth.uid));
+      // Allow user/admin to update their own profile,
+      // and allow any authenticated user to update ONLY the subscribers list.
+      allow update: if isAuth() && (
+        (isOwner(userId) || isAdmin(request.auth.uid)) ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['subscribers']))
+      );
       allow delete: if isAuth() && isAdmin(request.auth.uid);
     }
 
@@ -70,7 +75,7 @@ service cloud.firestore {
     match /submissions/{submissionId} {
       allow read: if isAuth() && (isOwner(resource.data.studentId) || isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
       allow create: if isAuth() && isStudent(request.auth.uid);
-      allow update: if isAuth() && isOwner(resource.data.studentId);
+      allow update: if isAuth() && (isOwner(resource.data.studentId) || isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
       allow delete: if isAuth() && isAdmin(request.auth.uid);
     }
 
