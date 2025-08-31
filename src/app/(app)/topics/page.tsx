@@ -1,4 +1,5 @@
 
+
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
@@ -25,21 +26,20 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { PlusCircle, MessageSquare, Trash2 } from "lucide-react";
+import { PlusCircle, MessageSquare, Trash2, MoreHorizontal } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { Topic, addTopic, getTopics, deleteTopic, TopicStatus } from "@/services/topic-service";
+import { Topic, addTopic, getTopics, deleteTopic, TopicStatus, updateTopic } from "@/services/topic-service";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCourses, getStudentCourses, Course } from "@/services/course-service";
 import { CreateTopicDialog } from "@/components/create-topic-dialog";
 import { UserProfileHoverCard } from "@/components/user-profile-hover-card";
 import { User } from "@/services/user-service";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 
-function TopicCard({ topic, onTopicDeleted }: { topic: Topic; onTopicDeleted: (id: string) => void; }) {
-    const { user } = useAuth();
-    const isTutorOrLecturerOrAdmin = user.role === "tutor" || user.role === "lecturer" || user.role === "admin";
+function TopicCard({ topic, onTopicDeleted, onStatusChanged, isModerator }: { topic: Topic; onTopicDeleted: (id: string) => void; onStatusChanged: (id: string, status: TopicStatus) => void; isModerator: boolean; }) {
     const topicAuthor = { 
         id: topic.authorId, 
         name: topic.author, 
@@ -51,7 +51,7 @@ function TopicCard({ topic, onTopicDeleted }: { topic: Topic; onTopicDeleted: (i
             <CardHeader>
                 <div className="flex justify-between items-start">
                     <CardTitle className="font-headline text-lg">{topic.title}</CardTitle>
-                    {isTutorOrLecturerOrAdmin && (
+                    {isModerator && (
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive">
@@ -97,12 +97,23 @@ function TopicCard({ topic, onTopicDeleted }: { topic: Topic; onTopicDeleted: (i
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <MessageSquare className="h-4 w-4"/>
                     <span>{topic.replies?.length || 0} Replies</span>
-                    <Badge 
-                    variant={topic.status === 'Closed' ? 'destructive' : topic.status === 'Reopened' ? 'secondary' : 'default'} 
-                    className="capitalize pointer-events-none"
-                    >
-                    {topic.status}
-                    </Badge>
+                     <DropdownMenu>
+                        <DropdownMenuTrigger asChild disabled={!isModerator}>
+                            <Badge 
+                                variant={topic.status === 'Closed' ? 'destructive' : topic.status === 'Reopened' ? 'secondary' : 'default'} 
+                                className={cn("capitalize", isModerator && "cursor-pointer hover:opacity-80")}
+                            >
+                                {topic.status}
+                            </Badge>
+                        </DropdownMenuTrigger>
+                         {isModerator && (
+                            <DropdownMenuContent align="start">
+                                <DropdownMenuItem onClick={() => onStatusChanged(topic.id, "Open")}>Mark as Open</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => onStatusChanged(topic.id, "Reopened")}>Mark as Reopened</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => onStatusChanged(topic.id, "Closed")}>Mark as Closed</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        )}
+                    </DropdownMenu>
                 </div>
                 <Button size="sm" asChild>
                     <Link href={`/topics/${topic.id}`}>View Topic</Link>
@@ -122,6 +133,7 @@ export default function TopicsPage() {
 
   const canCreateTopic = user.role === "student" || user.role === "tutor" || user.role === "lecturer";
   const isStudent = user.role === 'student';
+  const isModerator = user.role === "tutor" || user.role === "lecturer" || user.role === "admin";
 
   useEffect(() => {
     if (!user?.id) return;
@@ -177,6 +189,16 @@ export default function TopicsPage() {
     } catch (error) {
         toast({ title: "Error Deleting Topic", variant: "destructive"});
     }
+  };
+
+  const handleStatusChanged = async (topicId: string, status: TopicStatus) => {
+    try {
+        await updateTopic(topicId, { status });
+        setAllTopics(allTopics.map(t => t.id === topicId ? { ...t, status } : t));
+        toast({ title: "Status Updated", description: `Topic marked as ${status}.`});
+    } catch (error) {
+        toast({ title: "Error updating status", variant: "destructive"});
+    }
   }
   
   return (
@@ -225,7 +247,13 @@ export default function TopicsPage() {
             ))
         ) : (
             filteredTopics.map((topic) => (
-                <TopicCard key={topic.id} topic={topic} onTopicDeleted={handleTopicDeleted} />
+                <TopicCard 
+                    key={topic.id} 
+                    topic={topic} 
+                    onTopicDeleted={handleTopicDeleted} 
+                    onStatusChanged={handleStatusChanged}
+                    isModerator={isModerator}
+                />
             ))
         )}
       </div>
@@ -234,4 +262,5 @@ export default function TopicsPage() {
 }
 
 const Fallback = AvatarFallback;
+
 
