@@ -236,11 +236,10 @@ const EditLessonDialog = ({ courseId, moduleId, onLessonSaved, lesson, children 
     )
 };
 
-const AssignStaffDialog = ({ course, onStaffAssigned, children }: { course: Course, onStaffAssigned: (course: Course) => void, children: React.ReactNode}) => {
+const AssignStaffDialog = ({ course, onStaffAssigned, children, allUsers }: { course: Course, onStaffAssigned: (course: Course) => void, children: React.ReactNode, allUsers: User[]}) => {
     const { user } = useAuth();
     const { toast } = useToast();
     const [open, setOpen] = useState(false);
-    const [allUsers, setAllUsers] = useState<User[]>([]);
     const [lecturers, setLecturers] = useState<MultiSelectOption[]>([]);
     const [tutors, setTutors] = useState<MultiSelectOption[]>([]);
     const [assignedLecturers, setAssignedLecturers] = useState<string[]>([]);
@@ -250,18 +249,13 @@ const AssignStaffDialog = ({ course, onStaffAssigned, children }: { course: Cour
     const isLecturer = user?.role === 'lecturer';
 
     useEffect(() => {
-        const fetchUsers = async () => {
-            const users = await getUsers();
-            setAllUsers(users);
-            setLecturers(users.filter(u => u.role === 'lecturer').map(u => ({ value: u.id, label: u.name })));
-            setTutors(users.filter(u => u.role === 'tutor').map(u => ({ value: u.id, label: u.name })));
-        };
         if (open) {
-            fetchUsers();
+            setLecturers(allUsers.filter(u => u.role === 'lecturer').map(u => ({ value: u.id, label: u.name })));
+            setTutors(allUsers.filter(u => u.role === 'tutor').map(u => ({ value: u.id, label: u.name })));
             setAssignedLecturers(course.assignedLecturers || []);
             setAssignedTutors(course.assignedTutors || []);
         }
-    }, [open, course]);
+    }, [open, course, allUsers]);
 
     const handleSave = async () => {
         try {
@@ -270,30 +264,32 @@ const AssignStaffDialog = ({ course, onStaffAssigned, children }: { course: Cour
             await updateCourse(course.id, updatedCourseData);
 
             // Determine changes in staff
-            const originalStaff = [...(course.assignedLecturers || []), ...(course.assignedTutors || [])];
-            const newStaff = [...assignedLecturers, ...assignedTutors];
+            const originalLecturers = new Set(course.assignedLecturers || []);
+            const newLecturers = new Set(assignedLecturers);
+            const originalTutors = new Set(course.assignedTutors || []);
+            const newTutors = new Set(assignedTutors);
 
-            const addedStaff = newStaff.filter(id => !originalStaff.includes(id));
-            const removedStaff = originalStaff.filter(id => !newStaff.includes(id));
+            const allOriginalStaffIds = new Set([...originalLecturers, ...originalTutors]);
+            const allNewStaffIds = new Set([...newLecturers, ...newTutors]);
 
-            // Update user documents for added staff
-            for (const userId of addedStaff) {
+            const staffToUpdate = new Set([...allOriginalStaffIds, ...allNewStaffIds]);
+
+            // Update user documents for all affected staff
+            for (const userId of staffToUpdate) {
                 const staffUser = allUsers.find(u => u.id === userId);
                 if (staffUser) {
-                    const updatedCourses = [...(staffUser.assignedCourses || []), course.id];
-                    await updateUser(userId, { assignedCourses: updatedCourses });
+                    let userAssignedCourses = new Set(staffUser.assignedCourses || []);
+                    
+                    if(allNewStaffIds.has(userId)) {
+                        userAssignedCourses.add(course.id);
+                    } else {
+                        userAssignedCourses.delete(course.id);
+                    }
+                    
+                    await updateUser(userId, { assignedCourses: Array.from(userAssignedCourses) });
                 }
             }
-
-            // Update user documents for removed staff
-            for (const userId of removedStaff) {
-                const staffUser = allUsers.find(u => u.id === userId);
-                if (staffUser) {
-                    const updatedCourses = (staffUser.assignedCourses || []).filter(cId => cId !== course.id);
-                    await updateUser(userId, { assignedCourses: updatedCourses });
-                }
-            }
-
+            
             toast({ title: "Staff Assigned!" });
             onStaffAssigned({ ...course, ...updatedCourseData });
             setOpen(false);
@@ -507,7 +503,7 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
 
   const fetchCourseAndUsers = async () => {
       try {
-          setLoading(true);
+          // setLoading(true); // Optional: manage loading state more granularly
           const [fetchedCourse, fetchedUsers] = await Promise.all([
               getCourse(courseId),
               getUsers()
@@ -517,11 +513,12 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
       } catch (error) {
           toast({ title: "Error fetching course data", variant: "destructive" });
       } finally {
-          setLoading(false);
+          setLoading(false); // Ensure loading is false after fetching
       }
   };
 
   useEffect(() => {
+    setLoading(true);
     fetchCourseAndUsers();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId, toast]);
@@ -580,6 +577,7 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
    const onCourseDataSaved = (updatedCourse: Course) => {
     if (!course) return;
     setCourse(updatedCourse);
+    fetchCourseAndUsers(); // Re-fetch to get updated user data if staff changed
   }
 
   if (loading) {
@@ -621,7 +619,7 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
                         <CourseStaff course={course} allUsers={allUsers} />
                         {editMode && isLecturerOrAdmin && (
                             <div className="flex items-center gap-2">
-                                <AssignStaffDialog course={course} onStaffAssigned={onCourseDataSaved}>
+                                <AssignStaffDialog course={course} onStaffAssigned={onCourseDataSaved} allUsers={allUsers}>
                                     <Button variant="outline" size="sm"><Users className="mr-2 h-4 w-4"/>Assign Staff</Button>
                                 </AssignStaffDialog>
                                 <EnrollStudentDialog allUsers={allUsers} allCourses={[course]} onEnrollmentChanged={fetchCourseAndUsers} course={course}>
@@ -730,7 +728,7 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
                 </Card>
             )}
 
-            {isStudent && (
+            {isStudent && user && (
                  <AskQuestionCard course={course} user={user} />
             )}
         </div>
@@ -743,3 +741,5 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
     </div>
   );
 }
+
+    

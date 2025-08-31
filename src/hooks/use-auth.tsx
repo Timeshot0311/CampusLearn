@@ -89,8 +89,12 @@ export function useAuth() {
               status: 'Inactive',
               avatar: '',
               assignedCourses: [],
+              subscribers: [],
+              subscribing: []
           }
       };
   }
   return context;
 }
+
+    
