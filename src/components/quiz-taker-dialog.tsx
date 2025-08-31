@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -28,6 +27,7 @@ export function QuizTakerDialog({ quiz }: QuizTakerDialogProps) {
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
+  const [open, setOpen] = useState(false);
 
   const handleAnswerChange = (questionIndex: number, optionIndex: number) => {
     setAnswers(prev => ({ ...prev, [questionIndex]: optionIndex }));
@@ -49,11 +49,19 @@ export function QuizTakerDialog({ quiz }: QuizTakerDialogProps) {
     setSubmitted(false);
     setScore(0);
   }
+  
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    // Reset state when dialog is closed
+    if (!isOpen) {
+      handleRetake();
+    }
+  };
 
   const allQuestionsAnswered = Object.keys(answers).length === quiz.questions.length;
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button size="sm">Take Quiz</Button>
       </DialogTrigger>
@@ -68,13 +76,14 @@ export function QuizTakerDialog({ quiz }: QuizTakerDialogProps) {
                 {quiz.questions.map((question, qIndex) => (
                 <Card key={qIndex}>
                     <CardHeader>
-                    <CardTitle className="text-lg">Question {qIndex + 1}</CardTitle>
-                    <CardDescription>{question.text}</CardDescription>
+                        <CardTitle className="text-lg">Question {qIndex + 1}</CardTitle>
+                        <CardDescription>{question.text}</CardDescription>
                     </CardHeader>
                     <CardContent>
                     <RadioGroup
                         value={answers[qIndex]?.toString()}
                         onValueChange={(value) => handleAnswerChange(qIndex, parseInt(value))}
+                        className="space-y-2"
                     >
                         {question.options.map((option, oIndex) => (
                         <div key={oIndex} className="flex items-center space-x-2">
@@ -115,22 +124,25 @@ export function QuizTakerDialog({ quiz }: QuizTakerDialogProps) {
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    {question.options.map((option, oIndex) => {
-                                        const isUserAnswer = oIndex === userAnswer;
-                                        const isCorrectAnswer = oIndex === question.correctIndex;
+                                    <div className="space-y-2">
+                                        {question.options.map((option, oIndex) => {
+                                            const isUserAnswer = oIndex === userAnswer;
+                                            const isCorrectAnswer = oIndex === question.correctIndex;
 
-                                        return (
-                                            <div key={oIndex} className={cn(
-                                                "p-2 rounded-md my-1 text-sm",
-                                                isCorrectAnswer && "bg-green-100 dark:bg-green-900/30",
-                                                isUserAnswer && !isCorrectAnswer && "bg-red-100 dark:bg-red-900/30",
-                                            )}>
-                                                {isUserAnswer && <strong>Your Answer: </strong>}
-                                                {isCorrectAnswer && !isUserAnswer && <strong>Correct Answer: </strong>}
-                                                {option}
-                                            </div>
-                                        )
-                                    })}
+                                            return (
+                                                <div key={oIndex} className={cn(
+                                                    "p-2 rounded-md my-1 text-sm",
+                                                    isCorrectAnswer && "bg-green-100 dark:bg-green-900/30",
+                                                    isUserAnswer && !isCorrectAnswer && "bg-red-100 dark:bg-red-900/30",
+                                                )}>
+                                                    {isUserAnswer && !isCorrectAnswer && <strong>Your Answer: </strong>}
+                                                    {isCorrectAnswer && <strong>Correct Answer: </strong>}
+                                                    {!isUserAnswer && !isCorrectAnswer && <span>&nbsp;&nbsp;&nbsp;</span>}
+                                                    {option}
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
                                     {question.explanation && (
                                         <p className="text-xs text-muted-foreground mt-2 p-2 bg-muted/50 rounded-md">
                                             <strong>Explanation:</strong> {question.explanation}
