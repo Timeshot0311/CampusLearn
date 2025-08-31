@@ -90,7 +90,7 @@ export async function getCourseAssignments(courseId: string): Promise<Assignment
 }
 
 // Submit work for an assignment
-export async function addSubmission(submission: Omit<Submission, 'id' | 'status'>): Promise<string> {
+export async function addSubmission(submission: Omit<Submission, 'id' | 'status' | 'feedback' | 'grade'>): Promise<string> {
     if (!db) throw new Error("Firebase not initialized");
     
     const submissionToAdd = {

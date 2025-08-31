@@ -193,7 +193,7 @@ function GradeDialog({ submission, onGraded }: { submission: Submission; onGrade
           </Button>
           <div className="grid gap-2">
             <Label htmlFor="feedback">Feedback</Label>
-            <Textarea id="feedback" value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={8} placeholder="Generated feedback will appear here."/>
+            <Textarea id="feedback" value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={8} placeholder="Type or generate feedback here."/>
           </div>
         </div>
         <DialogFooter>
