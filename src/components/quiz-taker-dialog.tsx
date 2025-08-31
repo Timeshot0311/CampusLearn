@@ -80,7 +80,7 @@ export function QuizTakerDialog({ quiz }: QuizTakerDialogProps) {
                         <CardTitle className="text-lg">Question {qIndex + 1}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                    <p className="mb-4">{question.text}</p>
+                    <p className="mb-4 font-medium">{question.text}</p>
                     <RadioGroup
                         value={answers[qIndex]?.toString()}
                         onValueChange={(value) => handleAnswerChange(qIndex, parseInt(value))}
