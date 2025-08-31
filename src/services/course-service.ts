@@ -85,3 +85,5 @@ export async function uploadCourseFile(courseId: string, file: File): Promise<st
     const downloadURL = await getDownloadURL(storageRef);
     return downloadURL;
 }
+
+    

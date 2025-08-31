@@ -84,12 +84,13 @@ const LessonContentDisplay = ({ lesson, courseTitle }: { lesson: Lesson | null; 
                 );
             case 'file':
                 return (
-                    <div className="p-2 h-[80vh]">
-                        <iframe 
-                            src={`https://docs.google.com/gview?url=${lesson.content}&embedded=true`} 
-                            className="w-full h-full border-0 rounded-lg"
-                            title={lesson.title}
-                         />
+                    <div className="p-8 flex flex-col items-center justify-center text-center gap-4 aspect-video bg-muted/50 rounded-lg">
+                        <FileText className="h-16 w-16 text-muted-foreground"/>
+                        <h3 className="text-lg font-semibold">File: {lesson.title}</h3>
+                        <p className="text-muted-foreground">This lesson is a file. Click below to open it in a new tab.</p>
+                        <a href={lesson.content} target="_blank" rel="noopener noreferrer">
+                            <Button>Open File</Button>
+                        </a>
                     </div>
                 );
             case 'video':
@@ -956,5 +957,7 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
     </div>
   );
 }
+
+    
 
     
