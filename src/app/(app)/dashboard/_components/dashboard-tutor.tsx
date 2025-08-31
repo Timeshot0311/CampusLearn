@@ -38,6 +38,7 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { UserProfileHoverCard } from "@/components/user-profile-hover-card";
 import { User } from "@/services/user-service";
+import { getCourses } from "@/services/course-service";
 
 const performanceData = [
   { name: 'Quiz 1', avgScore: 78 },
@@ -151,9 +152,8 @@ export function DashboardTutor() {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [fetchedSubmissions] = await Promise.all([
-                    getTutorSubmissions(user.id),
-                ]);
+                const [allCourses] = await Promise.all([getCourses()]);
+                const fetchedSubmissions = await getTutorSubmissions(user, allCourses);
                 setSubmissions(fetchedSubmissions);
             } catch (error) {
                  toast({ title: "Error fetching tutor data", variant: "destructive" });
@@ -162,7 +162,7 @@ export function DashboardTutor() {
             }
         };
         fetchData();
-    }, [toast, user.id]);
+    }, [toast, user]);
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
