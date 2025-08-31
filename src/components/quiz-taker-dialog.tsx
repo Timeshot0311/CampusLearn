@@ -77,7 +77,7 @@ export function QuizTakerDialog({ quiz }: QuizTakerDialogProps) {
                 <Card key={qIndex}>
                     <CardHeader>
                         <CardTitle className="text-lg">Question {qIndex + 1}</CardTitle>
-                        <CardDescription>{question.text}</CardDescription>
+                        <p className="pt-2">{question.text}</p>
                     </CardHeader>
                     <CardContent>
                     <RadioGroup
