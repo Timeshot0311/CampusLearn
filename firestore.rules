@@ -30,8 +30,8 @@ service cloud.firestore {
     }
     
     function isCourseStaff(courseId, userId) {
-        let course = get(/databases/$(database)/documents/courses/$(courseId)).data;
-        return userId in course.assignedTutors || userId in course.assignedLecturers;
+      let course = get(/databases/$(database)/documents/courses/$(courseId)).data;
+      return userId in course.get('assignedLecturers', []) || userId in course.get('assignedTutors', []);
     }
 
     // Collections
