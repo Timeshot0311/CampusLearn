@@ -51,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const effectiveUser = useMemo(() => {
       if (!user) return null;
+      // Ensure all properties of the original user object are carried over.
       return { ...user, role: effectiveRole || user.role };
   }, [user, effectiveRole]);
 
@@ -86,7 +87,8 @@ export function useAuth() {
               email: '',
               role: 'student' as Role,
               status: 'Inactive',
-              avatar: ''
+              avatar: '',
+              assignedCourses: [],
           }
       };
   }
