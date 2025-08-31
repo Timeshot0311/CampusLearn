@@ -1,6 +1,6 @@
 
 import { db, storage } from '@/lib/firebase';
-import { collection, getDocs, doc, getDoc, addDoc, updateDoc, query, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, addDoc, updateDoc, query, where, orderBy, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { v4 as uuidv4 } from 'uuid';
 
@@ -85,6 +85,12 @@ export async function updateTopic(id: string, topic: Partial<Topic>): Promise<vo
     if (!db) throw new Error("Firebase not initialized");
     const docRef = doc(db, 'topics', id);
     await updateDoc(docRef, topic);
+}
+
+export async function deleteTopic(id: string): Promise<void> {
+    if (!db) throw new Error("Firebase not initialized");
+    const docRef = doc(db, 'topics', id);
+    await deleteDoc(docRef);
 }
 
 export async function addReply(topicId: string, reply: TopicReply): Promise<void> {
