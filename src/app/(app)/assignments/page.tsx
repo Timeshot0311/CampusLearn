@@ -92,7 +92,7 @@ function SubmitAssignmentDialog({ assignment, onSubmitted }: { assignment: (Assi
 }
 
 
-function GradeDialog({ submission }: { submission: Submission }) {
+function GradeDialog({ submission, onGraded }: { submission: Submission; onGraded: () => void; }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -123,6 +123,7 @@ function GradeDialog({ submission }: { submission: Submission }) {
   };
 
   const handleSubmitGrade = async () => {
+    if (!user) return;
     setLoading(true);
     try {
         // 1. Add entry to grades collection
@@ -149,6 +150,7 @@ function GradeDialog({ submission }: { submission: Submission }) {
             title: "Grade Submitted!",
             description: `Feedback for ${submission.studentName} has been saved.`
         });
+        onGraded();
         setOpen(false);
 
     } catch (error) {
@@ -283,21 +285,23 @@ function TutorSubmissions() {
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
 
-    useEffect(() => {
+    const fetchSubmissions = useCallback(async () => {
         if (!user || !user.id || !user.assignedCourses) return;
-        const fetchSubmissions = async () => {
-            try {
-                const allCourses = await getCourses();
-                const fetchedSubmissions = await getTutorSubmissions(user, allCourses);
-                setSubmissions(fetchedSubmissions);
-            } catch (error) {
-                toast({ title: "Error fetching submissions.", variant: "destructive" });
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchSubmissions();
+        try {
+            setLoading(true);
+            const allCourses = await getCourses();
+            const fetchedSubmissions = await getTutorSubmissions(user, allCourses);
+            setSubmissions(fetchedSubmissions);
+        } catch (error) {
+            toast({ title: "Error fetching submissions.", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
     }, [user, toast]);
+
+    useEffect(() => {
+        fetchSubmissions();
+    }, [fetchSubmissions]);
 
     return (
         <Card>
@@ -337,7 +341,7 @@ function TutorSubmissions() {
                                 <TableCell>{submission.assignmentName}</TableCell>
                                 <TableCell>{new Date(submission.submittedDate).toLocaleDateString()}</TableCell>
                                 <TableCell className="text-right">
-                                    <GradeDialog submission={submission} />
+                                    <GradeDialog submission={submission} onGraded={fetchSubmissions} />
                                 </TableCell>
                             </TableRow>
                             ))

@@ -97,13 +97,11 @@ export function DashboardStudent() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [fetchedCourses, fetchedAssignments] = await Promise.all([
-                getStudentCourses(user.id),
-                getStudentAssignments(user.id)
-            ]);
-            // For the dashboard, we only show a few courses
+            const fetchedCourses = await getStudentCourses(user.id);
             setCourses(fetchedCourses.slice(0, 2));
-            setDeadlines(fetchedAssignments.filter(a => a.status !== "Submitted"));
+
+            const fetchedAssignments = await getStudentAssignments(user.id, fetchedCourses);
+            setDeadlines(fetchedAssignments.filter(a => a.status !== "Submitted" && a.status !== "Graded"));
 
         } catch (error) {
             toast({
@@ -199,12 +197,12 @@ export function DashboardStudent() {
               </TableHeader>
               <TableBody>
                  {loading ? (
-                    <TableRow><TableCell colSpan={4}>Loading deadlines...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="text-center">Loading deadlines...</TableCell></TableRow>
                  ) : deadlines.length > 0 ? (
                     deadlines.map((deadline) => (
                         <TableRow key={deadline.id}>
                             <TableCell className="font-medium">{deadline.name}</TableCell>
-                            <TableCell className="hidden sm-table-cell">{deadline.course}</TableCell>
+                            <TableCell className="hidden sm:table-cell">{deadline.courseTitle}</TableCell>
                             <TableCell>{deadline.dueDate}</TableCell>
                             <TableCell className="text-right">
                             <Badge variant="secondary">{deadline.status}</Badge>
@@ -212,7 +210,7 @@ export function DashboardStudent() {
                         </TableRow>
                     ))
                  ) : (
-                    <TableRow><TableCell colSpan={4}>No upcoming deadlines.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="text-center">No upcoming deadlines.</TableCell></TableRow>
                  )}
               </TableBody>
             </Table>
