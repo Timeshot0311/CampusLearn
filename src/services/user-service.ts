@@ -1,9 +1,11 @@
 
-import { auth, db } from '@/lib/firebase';
+import { auth, db, storage } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc, writeBatch, query, where } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import type { Course } from './course-service';
 import type { Topic } from './topic-service';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { v4 as uuidv4 } from 'uuid';
 
 export type Role = "student" | "tutor" | "lecturer" | "admin";
 
@@ -163,4 +165,15 @@ export async function getUserSubscriptions(userId: string): Promise<User[]> {
     const user = await getUser(userId);
     if (!user || !user.subscribing) return [];
     return getUsersFromIds(user.subscribing);
+}
+
+export async function uploadUserAvatar(userId: string, file: File): Promise<string> {
+    if (!storage) throw new Error("Firebase Storage not initialized");
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `${uuidv4()}.${fileExtension}`;
+    const filePath = `avatars/${userId}/${fileName}`;
+    const storageRef = ref(storage, filePath);
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+    return downloadURL;
 }

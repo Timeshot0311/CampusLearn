@@ -8,9 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { updateUser, User, getUserTopics, Topic, getUserSubscriptions, getUserSubscribers } from "@/services/user-service";
+import { updateUser, User, getUserTopics, Topic, getUserSubscriptions, getUserSubscribers, uploadUserAvatar } from "@/services/user-service";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Loader2, MessageSquare, Users, UserCheck, Rss } from "lucide-react";
+import { Loader2, MessageSquare, Users, UserCheck, Rss, Upload } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -155,6 +155,7 @@ export default function ProfilePage() {
   
   const [name, setName] = useState(user?.name || "");
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar || "");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -164,15 +165,33 @@ export default function ProfilePage() {
 
   const initials = user?.name.split(' ').map(n => n[0]).join('') || "";
 
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setAvatarFile(file);
+      setAvatarUrl(URL.createObjectURL(file)); // Show preview
+    }
+  };
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setLoading(true);
+
     try {
-      await updateUser(user.id, { name, avatar: avatarUrl });
+      let finalAvatarUrl = user.avatar;
+      if (avatarFile) {
+        finalAvatarUrl = await uploadUserAvatar(user.id, avatarFile);
+      }
+      
+      const userDataToUpdate: Partial<User> = {
+        name,
+        avatar: finalAvatarUrl,
+      };
+
+      await updateUser(user.id, userDataToUpdate);
       toast({ title: "Profile Updated", description: "Your details have been successfully saved." });
-      // Note: In a real app, you might need to refresh the auth state or user context
-      // For now, we manually update the local state to reflect changes. A page refresh would show the new name in the header.
+      
        // This is a simplified way to trigger a re-render in useAuth to reflect the new name, in a real app this would be more robust
        window.location.reload();
     } catch (error: any) {
@@ -195,19 +214,24 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleUpdateProfile} className="space-y-6">
-                    <div className="flex items-center space-x-4">
-                        <Avatar className="h-20 w-20">
-                            <AvatarImage src={avatarUrl} alt={user?.name} />
-                            <AvatarFallback>{initials}</AvatarFallback>
-                        </Avatar>
-                        <div className="grid gap-2 flex-grow">
-                            <Label htmlFor="avatar">Avatar URL</Label>
-                            <Input id="avatar" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} />
+                     <div className="flex items-center space-x-6">
+                        <div className="relative">
+                            <Avatar className="h-24 w-24">
+                                <AvatarImage src={avatarUrl} alt={user?.name} />
+                                <AvatarFallback>{initials}</AvatarFallback>
+                            </Avatar>
+                            <Button asChild size="sm" variant="outline" className="absolute -bottom-2 -right-2 rounded-full h-8 w-8 p-0">
+                                <label htmlFor="avatar-upload" className="cursor-pointer">
+                                    <Upload className="h-4 w-4" />
+                                    <span className="sr-only">Upload avatar</span>
+                                </label>
+                            </Button>
+                            <Input id="avatar-upload" type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
                         </div>
-                    </div>
-                    <div className="grid gap-2 max-w-sm">
-                        <Label htmlFor="name">Full Name</Label>
-                        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+                        <div className="grid gap-2 flex-grow max-w-sm">
+                            <Label htmlFor="name">Full Name</Label>
+                            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+                        </div>
                     </div>
                      <div className="grid gap-2 max-w-sm">
                         <Label htmlFor="email">Email</Label>

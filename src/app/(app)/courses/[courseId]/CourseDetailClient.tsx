@@ -358,6 +358,7 @@ const AskQuestionCard = ({ course, user }: { course: Course, user: User }) => {
             description: question,
             course: course.title,
             author: user.name,
+            authorId: user.id,
             authorAvatar: user.avatar,
             replies: [],
             status: "Open",
@@ -596,7 +597,7 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
                                 <AssignStaffDialog course={course} onStaffAssigned={onCourseDataSaved}>
                                     <Button variant="outline" size="sm"><Users className="mr-2 h-4 w-4"/>Assign Staff</Button>
                                 </AssignStaffDialog>
-                                <EnrollStudentDialog allUsers={allUsers} course={course} onEnrollmentChanged={fetchCourseAndUsers}>
+                                <EnrollStudentDialog allUsers={allUsers} allCourses={[course]} onEnrollmentChanged={fetchCourseAndUsers} course={course}>
                                     <Button variant="outline" size="sm"><UserPlus className="mr-2 h-4 w-4"/>Enroll</Button>
                                 </EnrollStudentDialog>
                             </div>
