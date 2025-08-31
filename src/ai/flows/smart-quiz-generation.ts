@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -35,16 +36,16 @@ const prompt = ai.definePrompt({
   name: 'generateQuizPrompt',
   input: {schema: GenerateQuizInputSchema},
   output: {schema: GenerateQuizOutputSchema},
-  prompt: `You are an expert quiz generator. You will generate a quiz from the given learning material, which could be lecture notes, an article, a video transcript, or content from a PDF.
+  prompt: `You are an expert quiz generator. You will generate a quiz from the given learning material.
 
 Learning Material: {{{learningMaterial}}}
 
 Number of Questions: {{{numberOfQuestions}}}
 
-The quiz should be in JSON format. Each question should have the following fields:
-- question: the question text
-- options: an array of possible answers
-- answer: the correct answer (index of the options array)
+The quiz must be a valid JSON object. The JSON object should have a single key "quiz" which is an array of question objects. Each question object must have the following fields:
+- "question": The question text.
+- "options": An array of possible string answers.
+- "answer": The 0-based index of the correct answer in the "options" array.
 
 Example:
 {
@@ -62,8 +63,8 @@ Example:
   ]
 }
 
-Make sure the quiz is well-formatted JSON and can be parsed without errors.
-`, // Ensure valid JSON is returned
+Ensure the output is a single, valid JSON object and nothing else.
+`,
 });
 
 const generateQuizFlow = ai.defineFlow(
