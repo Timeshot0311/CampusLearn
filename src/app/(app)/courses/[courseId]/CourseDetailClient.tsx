@@ -28,6 +28,7 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/comp
 import { EnrollStudentDialog } from "@/components/enroll-student-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { UserProfileHoverCard } from "@/components/user-profile-hover-card";
 
 
 const LessonIcon = ({ type }: { type: Lesson['type'] }) => {
@@ -464,11 +465,15 @@ const CourseParticipants = ({ course, allUsers }: { course: Course, allUsers: Us
                             <TableRow key={user.id}>
                                 <TableCell>
                                     <div className="flex items-center gap-3">
-                                        <Avatar className="h-9 w-9">
-                                            <AvatarImage src={user.avatar} alt={user.name} />
-                                            <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                                        </Avatar>
-                                        <span className="font-medium">{user.name}</span>
+                                        <UserProfileHoverCard user={user}>
+                                            <Avatar className="h-9 w-9">
+                                                <AvatarImage src={user.avatar} alt={user.name} />
+                                                <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                            </Avatar>
+                                        </UserProfileHoverCard>
+                                        <UserProfileHoverCard user={user}>
+                                            <span className="font-medium">{user.name}</span>
+                                        </UserProfileHoverCard>
                                     </div>
                                 </TableCell>
                                 <TableCell>
