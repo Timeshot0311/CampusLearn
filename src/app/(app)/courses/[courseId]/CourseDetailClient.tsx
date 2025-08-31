@@ -957,7 +957,3 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
     </div>
   );
 }
-
-    
-
-    
