@@ -158,7 +158,7 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
                     await addNotification({
                         userId: subscriberId,
                         text: `${user.name} replied to the topic: "${topic.title}"`,
-                        topicId: topic.id,
+                        link: `/topics/${topic.id}`,
                         isRead: false,
                         timestamp: new Date().toISOString(),
                     });

@@ -93,6 +93,7 @@ export function CreateTopicDialog({
             // --- Notification Logic ---
             const notificationPromises: Promise<any>[] = [];
             const notifiedUserIds = new Set<string>([user.id]);
+            const notificationLink = `/topics/${newTopicId}`;
 
             // 1. Notify assigned staff
             if (selectedCourse && !isGeneral) {
@@ -102,7 +103,7 @@ export function CreateTopicDialog({
                         notificationPromises.push(addNotification({
                             userId: staffId,
                             text: `${user.name} created a new topic in "${courseName}": "${title}"`,
-                            topicId: newTopicId,
+                            link: notificationLink,
                             isRead: false,
                             timestamp: new Date().toISOString(),
                         }));
@@ -119,7 +120,7 @@ export function CreateTopicDialog({
                          notificationPromises.push(addNotification({
                             userId: subscriberId,
                             text: `${user.name} created a new topic: "${title}"`,
-                            topicId: newTopicId,
+                            link: notificationLink,
                             isRead: false,
                             timestamp: new Date().toISOString(),
                         }));

@@ -27,6 +27,7 @@ import { Assignment, Submission, getStudentAssignments, getTutorSubmissions, upd
 import { Course, getCourses, getStudentCourses } from "@/services/course-service";
 import { addGrade } from "@/services/grade-service";
 import { Input } from "@/components/ui/input";
+import { addNotification } from "@/services/topic-service";
 
 
 function SubmitAssignmentDialog({ assignment, onSubmitted }: { assignment: (Assignment & {status: SubmissionStatus}); onSubmitted: () => void }) {
@@ -144,6 +145,15 @@ function GradeDialog({ submission, onGraded }: { submission: Submission; onGrade
             status: "Graded",
             feedback: feedback,
             grade: grade,
+        });
+        
+        // 3. Send notification to student
+        await addNotification({
+            userId: submission.studentId,
+            text: `Your assignment "${submission.assignmentName}" has been graded.`,
+            link: "/grades",
+            isRead: false,
+            timestamp: new Date().toISOString(),
         });
 
         toast({

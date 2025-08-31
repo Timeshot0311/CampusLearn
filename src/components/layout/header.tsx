@@ -50,7 +50,7 @@ function NotificationBell() {
   const handleNotificationClick = async (notification: Notification) => {
       await markNotificationAsRead(notification.id);
       setOpen(false);
-      router.push(`/topics/${notification.topicId}`);
+      router.push(notification.link);
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;

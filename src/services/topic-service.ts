@@ -52,7 +52,7 @@ export type Notification = {
     id: string;
     userId: string;
     text: string;
-    topicId: string;
+    link: string; // Generic link instead of just topicId
     isRead: boolean;
     timestamp: string;
 }
