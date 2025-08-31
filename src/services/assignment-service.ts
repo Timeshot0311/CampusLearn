@@ -95,7 +95,9 @@ export async function addSubmission(submission: Omit<Submission, 'id' | 'status'
     
     const submissionToAdd = {
         ...submission,
-        status: "Submitted" as SubmissionStatus
+        status: "Submitted" as SubmissionStatus,
+        feedback: "",
+        grade: ""
     }
 
     const submissionsCollection = collection(db, 'submissions');
