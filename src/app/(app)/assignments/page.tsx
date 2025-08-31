@@ -200,7 +200,7 @@ function GradeDialog({ submission, onGraded }: { submission: Submission; onGrade
             <DialogClose asChild>
                 <Button variant="outline">Cancel</Button>
             </DialogClose>
-          <Button onClick={handleSubmitGrade} disabled={loading || !feedback || !grade}>Submit Grade</Button>
+          <Button onClick={handleSubmitGrade} disabled={loading || !feedback.trim() || !grade.trim()}>Submit Grade</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
