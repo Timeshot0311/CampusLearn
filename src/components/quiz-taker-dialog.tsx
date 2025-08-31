@@ -18,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { CheckCircle, XCircle } from 'lucide-react';
 import { Quiz, Question } from '@/services/topic-service';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from './ui/scroll-area';
 
 type QuizTakerDialogProps = {
   quiz: Quiz;
@@ -35,7 +36,7 @@ export function QuizTakerDialog({ quiz }: QuizTakerDialogProps) {
   const handleSubmit = () => {
     let correctAnswers = 0;
     quiz.questions.forEach((q, index) => {
-      if (answers[index] === q.answer) {
+      if (answers[index] === q.correctIndex) {
         correctAnswers++;
       }
     });
@@ -61,81 +62,88 @@ export function QuizTakerDialog({ quiz }: QuizTakerDialogProps) {
           <DialogTitle>{quiz.title}</DialogTitle>
         </DialogHeader>
 
-        {!submitted ? (
-          <div className="py-4 space-y-6">
-            {quiz.questions.map((question, qIndex) => (
-              <Card key={qIndex}>
-                <CardHeader>
-                  <CardTitle className="text-lg">Question {qIndex + 1}</CardTitle>
-                  <CardDescription>{question.question}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <RadioGroup
-                    value={answers[qIndex]?.toString()}
-                    onValueChange={(value) => handleAnswerChange(qIndex, parseInt(value))}
-                  >
-                    {question.options.map((option, oIndex) => (
-                      <div key={oIndex} className="flex items-center space-x-2">
-                        <RadioGroupItem value={oIndex.toString()} id={`q${qIndex}o${oIndex}`} />
-                        <Label htmlFor={`q${qIndex}o${oIndex}`}>{option}</Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="py-4 space-y-6">
-             <Card className="text-center">
-                <CardHeader>
-                    <CardTitle>Quiz Complete!</CardTitle>
-                    <CardDescription>You scored</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-5xl font-bold">{score} / {quiz.questions.length}</p>
-                    <p className="text-2xl font-semibold mt-2">
-                        {((score / quiz.questions.length) * 100).toFixed(0)}%
-                    </p>
-                </CardContent>
-             </Card>
-             <div>
-                <h3 className="text-xl font-bold mb-4">Review Your Answers</h3>
-                 {quiz.questions.map((question, qIndex) => {
-                    const userAnswer = answers[qIndex];
-                    const isCorrect = userAnswer === question.answer;
-                    return (
-                        <Card key={qIndex} className="mb-4">
-                            <CardHeader>
-                                <CardTitle className="text-base flex justify-between items-center">
-                                    <span>{qIndex + 1}. {question.question}</span>
-                                    {isCorrect ? <CheckCircle className="text-green-500" /> : <XCircle className="text-red-500" />}
-                                </CardTitle>
-                            </CardHeader>
-                             <CardContent>
-                                {question.options.map((option, oIndex) => {
-                                    const isUserAnswer = oIndex === userAnswer;
-                                    const isCorrectAnswer = oIndex === question.answer;
+        <ScrollArea className="max-h-[70vh] pr-6">
+            {!submitted ? (
+            <div className="py-4 space-y-6">
+                {quiz.questions.map((question, qIndex) => (
+                <Card key={qIndex}>
+                    <CardHeader>
+                    <CardTitle className="text-lg">Question {qIndex + 1}</CardTitle>
+                    <CardDescription>{question.text}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                    <RadioGroup
+                        value={answers[qIndex]?.toString()}
+                        onValueChange={(value) => handleAnswerChange(qIndex, parseInt(value))}
+                    >
+                        {question.options.map((option, oIndex) => (
+                        <div key={oIndex} className="flex items-center space-x-2">
+                            <RadioGroupItem value={oIndex.toString()} id={`q${qIndex}o${oIndex}`} />
+                            <Label htmlFor={`q${qIndex}o${oIndex}`}>{option}</Label>
+                        </div>
+                        ))}
+                    </RadioGroup>
+                    </CardContent>
+                </Card>
+                ))}
+            </div>
+            ) : (
+            <div className="py-4 space-y-6">
+                <Card className="text-center">
+                    <CardHeader>
+                        <CardTitle>Quiz Complete!</CardTitle>
+                        <CardDescription>You scored</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-5xl font-bold">{score} / {quiz.questions.length}</p>
+                        <p className="text-2xl font-semibold mt-2">
+                            {((score / quiz.questions.length) * 100).toFixed(0)}%
+                        </p>
+                    </CardContent>
+                </Card>
+                <div>
+                    <h3 className="text-xl font-bold mb-4">Review Your Answers</h3>
+                    {quiz.questions.map((question, qIndex) => {
+                        const userAnswer = answers[qIndex];
+                        const isCorrect = userAnswer === question.correctIndex;
+                        return (
+                            <Card key={qIndex} className="mb-4">
+                                <CardHeader>
+                                    <CardTitle className="text-base flex justify-between items-center">
+                                        <span>{qIndex + 1}. {question.text}</span>
+                                        {isCorrect ? <CheckCircle className="text-green-500" /> : <XCircle className="text-red-500" />}
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    {question.options.map((option, oIndex) => {
+                                        const isUserAnswer = oIndex === userAnswer;
+                                        const isCorrectAnswer = oIndex === question.correctIndex;
 
-                                    return (
-                                        <div key={oIndex} className={cn(
-                                            "p-2 rounded-md my-1 text-sm",
-                                            isCorrectAnswer && "bg-green-100 dark:bg-green-900/30",
-                                            isUserAnswer && !isCorrectAnswer && "bg-red-100 dark:bg-red-900/30",
-                                        )}>
-                                            {isUserAnswer && <strong>Your Answer: </strong>}
-                                            {isCorrectAnswer && !isUserAnswer && <strong>Correct Answer: </strong>}
-                                            {option}
-                                        </div>
-                                    )
-                                })}
-                             </CardContent>
-                        </Card>
-                    );
-                 })}
-             </div>
-          </div>
-        )}
+                                        return (
+                                            <div key={oIndex} className={cn(
+                                                "p-2 rounded-md my-1 text-sm",
+                                                isCorrectAnswer && "bg-green-100 dark:bg-green-900/30",
+                                                isUserAnswer && !isCorrectAnswer && "bg-red-100 dark:bg-red-900/30",
+                                            )}>
+                                                {isUserAnswer && <strong>Your Answer: </strong>}
+                                                {isCorrectAnswer && !isUserAnswer && <strong>Correct Answer: </strong>}
+                                                {option}
+                                            </div>
+                                        )
+                                    })}
+                                    {question.explanation && (
+                                        <p className="text-xs text-muted-foreground mt-2 p-2 bg-muted/50 rounded-md">
+                                            <strong>Explanation:</strong> {question.explanation}
+                                        </p>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
+                </div>
+            </div>
+            )}
+        </ScrollArea>
 
         <DialogFooter>
           {!submitted ? (
