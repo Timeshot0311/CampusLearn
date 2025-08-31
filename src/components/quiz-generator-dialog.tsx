@@ -30,19 +30,20 @@ export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
   const [material, setMaterial] = useState("");
   const [numQuestions, setNumQuestions] = useState(5);
   const [quizTitle, setQuizTitle] = useState("");
-  const [generatedQuiz, setGeneratedQuiz] = useState<GenerateQuizOutput | null>(null);
+  const [generatedQuizJson, setGeneratedQuizJson] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
 
 
   const handleGenerate = async () => {
     setLoading(true);
-    setGeneratedQuiz(null);
+    setGeneratedQuizJson(null);
     try {
       const result = await generateQuiz({
         learningMaterial: material,
         numberOfQuestions: numQuestions,
       });
-      setGeneratedQuiz(result);
+      // The AI returns a stringified JSON, so we store it as a string first
+      setGeneratedQuizJson(result.quiz);
     } catch (error) {
       console.error(error);
       toast({
@@ -55,7 +56,7 @@ export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
   };
   
   const handleSaveQuiz = () => {
-    if (!generatedQuiz || !quizTitle) {
+    if (!generatedQuizJson || !quizTitle) {
       toast({
         title: "Missing Information",
         description: "Please generate a quiz and provide a title before saving.",
@@ -64,21 +65,30 @@ export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
       return;
     }
     
-    // The AI returns a stringified JSON, so we need to parse it.
-    const parsedQuizData = JSON.parse(generatedQuiz.quiz);
+    try {
+        const parsedData = JSON.parse(generatedQuizJson);
 
-    const quizToSave: Omit<Quiz, 'id'> = {
-        title: quizTitle,
-        questions: parsedQuizData.questions,
-    };
+        // The AI now returns an object with a 'questions' property
+        const quizToSave: Omit<Quiz, 'id'> = {
+            title: quizTitle,
+            questions: parsedData.questions, 
+        };
 
-    onSave(quizToSave);
-    setOpen(false); // Close dialog on save
-    // Reset state for next time
-    setMaterial("");
-    setNumQuestions(5);
-    setQuizTitle("");
-    setGeneratedQuiz(null);
+        onSave(quizToSave);
+        setOpen(false); // Close dialog on save
+        // Reset state for next time
+        setMaterial("");
+        setNumQuestions(5);
+        setQuizTitle("");
+        setGeneratedQuizJson(null);
+
+    } catch (error) {
+         toast({
+            title: "Error Parsing Quiz",
+            description: "The generated quiz data was not in the expected format. Please try generating it again.",
+            variant: "destructive"
+          });
+    }
   }
 
   return (
@@ -131,15 +141,15 @@ export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
             {loading ? "Generating..." : "Generate Quiz"}
           </Button>
 
-          {generatedQuiz && (
+          {generatedQuizJson && (
              <div className="grid gap-2">
               <Label>Generated Quiz (Preview)</Label>
-              <Textarea readOnly value={generatedQuiz.quiz} rows={10} className="font-mono text-xs bg-muted" />
+              <Textarea readOnly value={generatedQuizJson} rows={10} className="font-mono text-xs bg-muted" />
             </div>
           )}
         </div>
         <DialogFooter>
-          <Button onClick={handleSaveQuiz} disabled={!generatedQuiz || !quizTitle}>
+          <Button onClick={handleSaveQuiz} disabled={!generatedQuizJson || !quizTitle}>
             Save Quiz to Topic
           </Button>
         </DialogFooter>
