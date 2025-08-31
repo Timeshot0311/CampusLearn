@@ -203,7 +203,6 @@ const LessonForm = ({ courseId, moduleId, onLessonSaved, onCancel, existingLesso
     
     return (
         <div className="p-4 border-t space-y-4">
-            <h4 className="font-semibold">{existingLesson ? 'Edit Lesson' : 'New Lesson'}</h4>
             <div className="grid gap-2">
                 <Label>Lesson Title</Label>
                 <Input placeholder="e.g., The Structure of an Atom" value={title} onChange={e => setTitle(e.target.value)} />
@@ -287,6 +286,12 @@ const EditLessonDialog = ({ courseId, moduleId, onLessonSaved, lesson, children 
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>{children}</DialogTrigger>
             <DialogContent className="sm:max-w-2xl">
+                 <DialogHeader>
+                    <DialogTitle>{lesson ? 'Edit Lesson' : 'New Lesson'}</DialogTitle>
+                    <DialogDescription>
+                        {lesson ? "Update the details for this lesson." : "Fill out the form to add a new lesson to this module."}
+                    </DialogDescription>
+                 </DialogHeader>
                  <LessonForm 
                     courseId={courseId} 
                     moduleId={moduleId} 
@@ -951,3 +956,5 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
     </div>
   );
 }
+
+    
