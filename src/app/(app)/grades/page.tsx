@@ -5,9 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
-import { Grade, TutorGradebookEntry, getStudentGrades, getTutorGradebook } from "@/services/grade-service";
+import { Grade, getStudentGrades, getTutorGradebook } from "@/services/grade-service";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { UserProfileHoverCard } from "@/components/user-profile-hover-card";
+import { getUser, User } from "@/services/user-service";
+import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 function StudentGrades() {
     const [grades, setGrades] = useState<Grade[]>([]);
@@ -16,10 +21,10 @@ function StudentGrades() {
     const { toast } = useToast();
 
     useEffect(() => {
+        if (!user?.id) return;
         const fetchGrades = async () => {
             try {
-                // In a real app, you'd pass a real user ID
-                const fetchedGrades = await getStudentGrades("student-id-placeholder");
+                const fetchedGrades = await getStudentGrades(user.id);
                 setGrades(fetchedGrades);
             } catch (error) {
                 toast({ title: "Error fetching grades.", variant: "destructive" });
@@ -28,7 +33,7 @@ function StudentGrades() {
             }
         };
         fetchGrades();
-    }, [toast]);
+    }, [user?.id, toast]);
 
     return (
         <Card>
@@ -43,21 +48,23 @@ function StudentGrades() {
                     <TableHead>Assignment</TableHead>
                     <TableHead>Course</TableHead>
                     <TableHead>Grade</TableHead>
-                    <TableHead className="text-right">Score</TableHead>
+                    <TableHead>Feedback</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
                 {loading ? (
-                    <TableRow><TableCell colSpan={4}>Loading grades...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="text-center">Loading grades...</TableCell></TableRow>
+                ) : grades.length === 0 ? (
+                    <TableRow><TableCell colSpan={4} className="text-center">No grades have been posted yet.</TableCell></TableRow>
                 ) : (
                     grades.map((grade) => (
                         <TableRow key={grade.id}>
-                        <TableCell className="font-medium">{grade.assignment}</TableCell>
-                        <TableCell>{grade.course}</TableCell>
+                        <TableCell className="font-medium">{grade.assignmentName}</TableCell>
+                        <TableCell>{grade.courseName}</TableCell>
                         <TableCell>
                             <Badge variant="secondary">{grade.grade}</Badge>
                         </TableCell>
-                        <TableCell className="text-right">{grade.score}</TableCell>
+                        <TableCell>{grade.feedback || 'No feedback provided.'}</TableCell>
                         </TableRow>
                     ))
                 )}
@@ -68,17 +75,66 @@ function StudentGrades() {
     )
 }
 
+const GradebookRow = ({ grade }: { grade: Grade }) => {
+    const [student, setStudent] = useState<User | null>(null);
+
+    useEffect(() => {
+        const fetchStudent = async () => {
+            const user = await getUser(grade.studentId);
+            setStudent(user);
+        }
+        fetchStudent();
+    }, [grade.studentId]);
+
+    if (!student) {
+        return (
+            <TableRow>
+                <TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell>
+            </TableRow>
+        )
+    }
+
+    return (
+        <TableRow key={grade.id}>
+            <TableCell>
+                 <div className="flex items-center gap-3">
+                    <UserProfileHoverCard user={student}>
+                        <Link href={`/profile/${student.id}`}>
+                            <Avatar>
+                                <AvatarImage src={student.avatar} />
+                                <AvatarFallback>{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                            </Avatar>
+                        </Link>
+                    </UserProfileHoverCard>
+                    <div>
+                        <UserProfileHoverCard user={student}>
+                            <Link href={`/profile/${student.id}`} className="font-medium hover:underline">{student.name}</Link>
+                        </UserProfileHoverCard>
+                        <p className="text-sm text-muted-foreground">{student.email}</p>
+                    </div>
+                </div>
+            </TableCell>
+            <TableCell>{grade.courseName}</TableCell>
+            <TableCell>{grade.assignmentName}</TableCell>
+            <TableCell className="text-right">
+                <Badge variant="secondary">{grade.grade}</Badge>
+            </TableCell>
+        </TableRow>
+    )
+};
+
+
 function TutorGradebook() {
-    const [gradebook, setGradebook] = useState<TutorGradebookEntry[]>([]);
+    const [gradebook, setGradebook] = useState<Grade[]>([]);
     const [loading, setLoading] = useState(true);
     const { user } = useAuth();
     const { toast } = useToast();
     
     useEffect(() => {
+        if (!user?.id) return;
         const fetchGradebook = async () => {
             try {
-                 // In a real app, you'd pass a real user ID
-                const fetchedGradebook = await getTutorGradebook("tutor-id-placeholder");
+                const fetchedGradebook = await getTutorGradebook(user);
                 setGradebook(fetchedGradebook);
             } catch (error) {
                 toast({ title: "Error fetching gradebook.", variant: "destructive" });
@@ -87,7 +143,7 @@ function TutorGradebook() {
             }
         };
         fetchGradebook();
-    }, [toast]);
+    }, [user, toast]);
 
     return (
          <Card>
@@ -107,17 +163,12 @@ function TutorGradebook() {
                 </TableHeader>
                 <TableBody>
                 {loading ? (
-                     <TableRow><TableCell colSpan={4}>Loading gradebook...</TableCell></TableRow>
+                     <TableRow><TableCell colSpan={4} className="text-center">Loading gradebook...</TableCell></TableRow>
+                ) : gradebook.length === 0 ? (
+                    <TableRow><TableCell colSpan={4} className="text-center">No grades have been posted for your courses.</TableCell></TableRow>
                 ) : (
                     gradebook.map((grade) => (
-                        <TableRow key={grade.id}>
-                        <TableCell className="font-medium">{grade.student}</TableCell>
-                        <TableCell>{grade.course}</TableCell>
-                        <TableCell>{grade.assignment}</TableCell>
-                        <TableCell className="text-right">
-                            <Badge variant="secondary">{grade.grade}</Badge>
-                        </TableCell>
-                        </TableRow>
+                       <GradebookRow key={grade.id} grade={grade} />
                     ))
                 )}
                 </TableBody>
@@ -129,11 +180,11 @@ function TutorGradebook() {
 
 export default function GradesPage() {
     const { user } = useAuth();
-    const isTutor = user.role === "tutor";
+    const isTutorOrLecturer = user.role === "tutor" || user.role === "lecturer";
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-3xl font-bold font-headline">{isTutor ? "Gradebook" : "Grades"}</h1>
-      {isTutor ? <TutorGradebook /> : <StudentGrades />}
+      <h1 className="text-3xl font-bold font-headline">{isTutorOrLecturer ? "Gradebook" : "Grades"}</h1>
+      {isTutorOrLecturer ? <TutorGradebook /> : <StudentGrades />}
     </div>
   );
 }

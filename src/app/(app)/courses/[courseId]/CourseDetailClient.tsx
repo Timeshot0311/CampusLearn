@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { PlayCircle, FileText, CheckCircle, BookOpen, Youtube, File, ClipboardCheck, Trash2, PlusCircle, Loader2, Upload, Pencil, Users, Send, UserPlus } from "lucide-react";
+import { PlayCircle, FileText, CheckCircle, BookOpen, Youtube, File, ClipboardCheck, Trash2, PlusCircle, Loader2, Upload, Pencil, Users, Send, UserPlus, FileEdit } from "lucide-react";
 import { Course, Module, Lesson, updateCourse, uploadCourseFile, getCourse } from "@/services/course-service";
 import { Topic, addTopic } from "@/services/topic-service";
+import { Assignment, addAssignment, getCourseAssignments } from "@/services/assignment-service";
 import { useState, useEffect, useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +30,7 @@ import { EnrollStudentDialog } from "@/components/enroll-student-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { UserProfileHoverCard } from "@/components/user-profile-hover-card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 
 const LessonIcon = ({ type }: { type: Lesson['type'] }) => {
@@ -207,7 +209,7 @@ const LessonForm = ({ courseId, moduleId, onLessonSaved, onCancel, existingLesso
             </div>
             <div className="flex gap-2 justify-end">
                 <Button variant="ghost" onClick={onCancel}>Cancel</Button>
-                <Button onClick={handleSaveLesson} disabled={uploading}>{existingLesson ? "Save Changes" : "Add Lesson"}</Button>
+                <Button onClick={handleSave} disabled={uploading}>{existingLesson ? "Save Changes" : "Add Lesson"}</Button>
             </div>
         </div>
     );
@@ -446,7 +448,7 @@ const CourseParticipants = ({ course, allUsers }: { course: Course, allUsers: Us
     }
 
     return (
-        <Card className="mt-6">
+        <Card>
             <CardHeader>
                 <CardTitle>Course Participants</CardTitle>
                 <CardDescription>All students and staff involved in this course.</CardDescription>
@@ -490,6 +492,135 @@ const CourseParticipants = ({ course, allUsers }: { course: Course, allUsers: Us
         </Card>
     )
 }
+
+const CreateAssignmentDialog = ({ course, onAssignmentCreated }: { course: Course; onAssignmentCreated: () => void }) => {
+    const [open, setOpen] = useState(false);
+    const [name, setName] = useState("");
+    const [dueDate, setDueDate] = useState("");
+    const [loading, setLoading] = useState(false);
+    const { toast } = useToast();
+
+    const handleCreate = async () => {
+        if (!name.trim() || !dueDate.trim()) {
+            toast({ title: "Missing fields", variant: "destructive" });
+            return;
+        }
+        setLoading(true);
+        try {
+            await addAssignment({
+                courseId: course.id,
+                courseTitle: course.title,
+                name: name,
+                dueDate: dueDate,
+            });
+            toast({ title: "Assignment Created!" });
+            onAssignmentCreated();
+            setOpen(false);
+        } catch (error) {
+            toast({ title: "Error", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    useEffect(() => {
+        if (!open) {
+            setName("");
+            setDueDate("");
+        }
+    }, [open]);
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button size="sm">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    New Assignment
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Create New Assignment</DialogTitle>
+                    <DialogDescription>For course: {course.title}</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="name">Assignment Name</Label>
+                        <Input id="name" value={name} onChange={e => setName(e.target.value)} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="dueDate">Due Date</Label>
+                        <Input id="dueDate" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                    <Button onClick={handleCreate} disabled={loading}>{loading ? "Creating..." : "Create"}</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+
+const CourseAssignments = ({ course, isLecturerOrAdmin }: { course: Course, isLecturerOrAdmin: boolean }) => {
+    const [assignments, setAssignments] = useState<Assignment[]>([]);
+    const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
+
+    const fetchAssignments = async () => {
+        setLoading(true);
+        try {
+            const fetchedAssignments = await getCourseAssignments(course.id);
+            setAssignments(fetchedAssignments);
+        } catch (error) {
+            toast({ title: "Error fetching assignments", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    useEffect(() => {
+        fetchAssignments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [course.id]);
+    
+    return (
+        <Card className="mt-6">
+            <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                    <CardTitle>Course Assignments</CardTitle>
+                    <CardDescription>All assignments for this course.</CardDescription>
+                </div>
+                {isLecturerOrAdmin && <CreateAssignmentDialog course={course} onAssignmentCreated={fetchAssignments} />}
+            </CardHeader>
+            <CardContent>
+                {loading ? <p>Loading assignments...</p> :
+                 assignments.length > 0 ? (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Due Date</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {assignments.map(assignment => (
+                                <TableRow key={assignment.id}>
+                                    <TableCell className="font-medium">{assignment.name}</TableCell>
+                                    <TableCell>{assignment.dueDate}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                 ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">No assignments created for this course yet.</p>
+                 )
+                }
+            </CardContent>
+        </Card>
+    );
+};
 
 
 export default function CourseDetailClient({ courseId }: { courseId: string }) {
@@ -740,11 +871,23 @@ export default function CourseDetailClient({ courseId }: { courseId: string }) {
 
         {/* Right column for lesson content */}
         <div className="lg:col-span-2">
-            <LessonContentDisplay lesson={activeLesson} courseTitle={course.title} />
-            <CourseParticipants course={course} allUsers={allUsers} />
+           <Tabs defaultValue="content" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="content"><BookOpen className="mr-2 h-4 w-4"/>Lesson Content</TabsTrigger>
+                    <TabsTrigger value="assignments"><FileEdit className="mr-2 h-4 w-4" />Assignments</TabsTrigger>
+                    <TabsTrigger value="participants"><Users className="mr-2 h-4 w-4" />Participants</TabsTrigger>
+                </TabsList>
+                <TabsContent value="content">
+                    <LessonContentDisplay lesson={activeLesson} courseTitle={course.title} />
+                </TabsContent>
+                <TabsContent value="assignments">
+                    <CourseAssignments course={course} isLecturerOrAdmin={isLecturerOrAdmin} />
+                </TabsContent>
+                <TabsContent value="participants">
+                    <CourseParticipants course={course} allUsers={allUsers} />
+                </TabsContent>
+            </Tabs>
         </div>
     </div>
   );
 }
-
-    
