@@ -18,10 +18,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { addTopic, Topic } from "@/services/topic-service";
+import { addTopic, Topic, addNotification } from "@/services/topic-service";
 import { Course } from "@/services/course-service";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getUsers, User } from "@/services/user-service";
 
 interface CreateTopicDialogProps {
   courses: Course[];
@@ -41,6 +42,7 @@ export function CreateTopicDialog({
     const [description, setDescription] = useState("");
     const [courseId, setCourseId] = useState(defaultCourseId || "");
     const [isGeneral, setIsGeneral] = useState(false);
+    const [allUsers, setAllUsers] = useState<User[]>([]);
 
     const { user } = useAuth();
     const { toast } = useToast();
@@ -51,13 +53,21 @@ export function CreateTopicDialog({
             setDescription("");
             setCourseId(defaultCourseId || "");
             setIsGeneral(false);
+
+            // Fetch all users to determine who to notify
+            const fetchUsers = async () => {
+                const users = await getUsers();
+                setAllUsers(users);
+            };
+            fetchUsers();
         }
     }, [open, defaultCourseId]);
 
     const handleSave = async () => {
+        const selectedCourse = courses.find(c => c.id === courseId);
         const courseName = isGeneral 
             ? "General" 
-            : courses.find(c => c.id === courseId)?.title;
+            : selectedCourse?.title;
         
         if (!title || !description || !courseName) {
             toast({ title: "Missing Fields", description: "Please fill out all fields to create a topic.", variant: "destructive" });
@@ -77,7 +87,50 @@ export function CreateTopicDialog({
                 materials: []
             };
             const newTopicId = await addTopic(topicToAdd);
-            onTopicCreated({ ...topicToAdd, id: newTopicId });
+            const newTopic = { ...topicToAdd, id: newTopicId };
+            onTopicCreated(newTopic);
+
+            // --- Notification Logic ---
+            const notificationPromises: Promise<any>[] = [];
+            const notifiedUserIds = new Set<string>([user.id]);
+
+            // 1. Notify assigned staff
+            if (selectedCourse && !isGeneral) {
+                const staffIds = [...(selectedCourse.assignedLecturers || []), ...(selectedCourse.assignedTutors || [])];
+                for (const staffId of staffIds) {
+                    if (!notifiedUserIds.has(staffId)) {
+                        notificationPromises.push(addNotification({
+                            userId: staffId,
+                            text: `${user.name} created a new topic in "${courseName}": "${title}"`,
+                            topicId: newTopicId,
+                            isRead: false,
+                            timestamp: new Date().toISOString(),
+                        }));
+                        notifiedUserIds.add(staffId);
+                    }
+                }
+            }
+
+            // 2. Notify author's subscribers
+            const authorData = allUsers.find(u => u.id === user.id);
+            if (authorData && authorData.subscribers) {
+                for (const subscriberId of authorData.subscribers) {
+                    if (!notifiedUserIds.has(subscriberId)) {
+                         notificationPromises.push(addNotification({
+                            userId: subscriberId,
+                            text: `${user.name} created a new topic: "${title}"`,
+                            topicId: newTopicId,
+                            isRead: false,
+                            timestamp: new Date().toISOString(),
+                        }));
+                        notifiedUserIds.add(subscriberId);
+                    }
+                }
+            }
+
+            await Promise.all(notificationPromises);
+            // --- End Notification Logic ---
+            
             setOpen(false);
         } catch (error) {
             toast({ title: "Error creating topic", variant: "destructive" });
