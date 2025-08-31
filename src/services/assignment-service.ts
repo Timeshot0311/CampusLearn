@@ -1,6 +1,6 @@
 
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, addDoc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, doc, addDoc, updateDoc, query, where, setDoc } from 'firebase/firestore';
 import { Course } from './course-service';
 import { User } from './user-service';
 
@@ -109,5 +109,5 @@ export async function addSubmission(submission: Omit<Submission, 'id' | 'status'
 export async function updateSubmission(id: string, data: Partial<Submission>): Promise<void> {
     if (!db) throw new Error("Firebase not initialized");
     const docRef = doc(db, 'submissions', id);
-    await updateDoc(docRef, data);
+    await setDoc(docRef, data, { merge: true });
 }
