@@ -112,45 +112,51 @@ export default function TopicsPage() {
                  </Card>
             ))
         ) : (
-            topics.map((topic) => (
-            <Card key={topic.id} className="flex flex-col">
-                <CardHeader>
-                <CardTitle className="font-headline text-lg">{topic.title}</CardTitle>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2">
-                    <UserProfileHoverCard user={topic as unknown as User}>
-                         <Link href={`/profile/${topic.authorId}`}>
-                            <Avatar className="h-6 w-6">
-                                <AvatarImage src={topic.authorAvatar} alt={topic.author} />
-                                <AvatarFallback>{topic.author.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                        </Link>
-                    </UserProfileHoverCard>
-                    <UserProfileHoverCard user={topic as unknown as User}>
-                        <Link href={`/profile/${topic.authorId}`} className="hover:underline">{topic.author}</Link>
-                    </UserProfileHoverCard>
-                </div>
-                <CardDescription className="pt-2 line-clamp-3">{topic.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                    <Badge variant="outline">{topic.course}</Badge>
-                </CardContent>
-                <CardFooter className="flex justify-between items-center">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <MessageSquare className="h-4 w-4"/>
-                        <span>{topic.replies?.length || 0} Replies</span>
-                        <Badge 
-                        variant={topic.status === 'Closed' ? 'destructive' : topic.status === 'Reopened' ? 'secondary' : 'default'} 
-                        className="capitalize pointer-events-none"
-                        >
-                        {topic.status}
-                        </Badge>
+            topics.map((topic) => {
+                const topicAuthor = { 
+                    id: topic.authorId, 
+                    name: topic.author, 
+                    avatar: topic.authorAvatar 
+                } as User;
+                return (
+                <Card key={topic.id} className="flex flex-col">
+                    <CardHeader>
+                    <CardTitle className="font-headline text-lg">{topic.title}</CardTitle>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2">
+                        <UserProfileHoverCard user={topicAuthor}>
+                             <Link href={`/profile/${topic.authorId}`}>
+                                <Avatar className="h-6 w-6">
+                                    <AvatarImage src={topic.authorAvatar} alt={topic.author} />
+                                    <AvatarFallback>{topic.author?.charAt(0) || '?'}</AvatarFallback>
+                                </Avatar>
+                            </Link>
+                        </UserProfileHoverCard>
+                        <UserProfileHoverCard user={topicAuthor}>
+                            <Link href={`/profile/${topic.authorId}`} className="hover:underline">{topic.author}</Link>
+                        </UserProfileHoverCard>
                     </div>
-                <Button size="sm" asChild>
-                    <Link href={`/topics/${topic.id}`}>View Topic</Link>
-                </Button>
-                </CardFooter>
-            </Card>
-            ))
+                    <CardDescription className="pt-2 line-clamp-3">{topic.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow">
+                        <Badge variant="outline">{topic.course}</Badge>
+                    </CardContent>
+                    <CardFooter className="flex justify-between items-center">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <MessageSquare className="h-4 w-4"/>
+                            <span>{topic.replies?.length || 0} Replies</span>
+                            <Badge 
+                            variant={topic.status === 'Closed' ? 'destructive' : topic.status === 'Reopened' ? 'secondary' : 'default'} 
+                            className="capitalize pointer-events-none"
+                            >
+                            {topic.status}
+                            </Badge>
+                        </div>
+                    <Button size="sm" asChild>
+                        <Link href={`/topics/${topic.id}`}>View Topic</Link>
+                    </Button>
+                    </CardFooter>
+                </Card>
+            )})
         )}
       </div>
     </div>
@@ -158,3 +164,4 @@ export default function TopicsPage() {
 }
 
 const Fallback = AvatarFallback;
+

@@ -33,7 +33,7 @@ export function UserProfileHoverCard({ user, children }: UserProfileHoverCardPro
                 <div className="flex justify-between space-x-4">
                     <Avatar>
                         <AvatarImage src={user.avatar} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback>{user.name?.charAt(0) || '?'}</AvatarFallback>
                     </Avatar>
                     <div className="space-y-1 flex-grow">
                         <h4 className="text-sm font-semibold">{user.name}</h4>
