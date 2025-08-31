@@ -72,12 +72,12 @@ const LessonContentDisplay = ({ lesson, courseTitle }: { lesson: Lesson | null; 
                             remarkPlugins={[remarkGfm]} 
                             className="prose dark:prose-invert max-w-none p-6"
                             components={{
-                                a: ({...props}) => {
+                                a: ({ node, ...props }) => {
                                     const isFileLink = props.href?.endsWith('.pdf') || props.href?.endsWith('.ppt') || props.href?.endsWith('.pptx');
                                     if (isFileLink) {
                                         return <a href={props.href} target="_blank" rel="noopener noreferrer">{props.children}</a>
                                     }
-                                    return <a href={props.href} {...props}>{props.children}</a>
+                                    return <a href={props.href} target={props.target} rel={props.rel}>{props.children}</a>
                                 }
                             }}
                         >
