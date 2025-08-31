@@ -68,10 +68,10 @@ export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
     try {
         const parsedData = JSON.parse(generatedQuizJson);
 
-        // The AI now returns an object with a 'questions' property
+        // The AI now returns an object with a 'quiz' property
         const quizToSave: Omit<Quiz, 'id'> = {
             title: quizTitle,
-            questions: parsedData.questions, 
+            questions: parsedData.quiz, 
         };
 
         onSave(quizToSave);
