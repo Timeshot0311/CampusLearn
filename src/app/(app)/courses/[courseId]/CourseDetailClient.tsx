@@ -68,7 +68,21 @@ const LessonContentDisplay = ({ lesson, courseTitle }: { lesson: Lesson | null; 
     const renderContent = () => {
          switch (lesson.type) {
             case 'article':
-                return <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose dark:prose-invert max-w-none p-6">{lesson.content}</ReactMarkdown>;
+                return <ReactMarkdown 
+                            remarkPlugins={[remarkGfm]} 
+                            className="prose dark:prose-invert max-w-none p-6"
+                            components={{
+                                a: ({node, ...props}) => {
+                                    const isFileLink = props.href?.endsWith('.pdf') || props.href?.endsWith('.ppt') || props.href?.endsWith('.pptx');
+                                    if (isFileLink) {
+                                        return <a href={props.href} target="_blank" rel="noopener noreferrer">{props.children}</a>
+                                    }
+                                    return <a href={props.href} {...props}>{props.children}</a>
+                                }
+                            }}
+                        >
+                            {lesson.content}
+                        </ReactMarkdown>;
             case 'youtube':
                 const embedUrl = lesson.content.includes("embed") ? lesson.content : lesson.content.replace("watch?v=", "embed/");
                 return (
