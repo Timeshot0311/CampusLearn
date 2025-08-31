@@ -24,6 +24,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { QuizGeneratorDialog } from "@/components/quiz-generator-dialog";
 import { QuizTakerDialog } from "@/components/quiz-taker-dialog";
 import { Course, getCourses } from "@/services/course-service";
+import { UserProfileHoverCard } from "@/components/user-profile-hover-card";
+import { getUser } from "@/services/user-service";
+import Link from "next/link";
 
 
 function MaterialIcon({ type }: { type: string }) {
@@ -31,6 +34,49 @@ function MaterialIcon({ type }: { type: string }) {
     if (type.startsWith('audio')) return <Music className="h-5 w-5 text-muted-foreground" />;
     if (type.includes('pdf')) return <FileText className="h-5 w-5 text-muted-foreground" />;
     return <Paperclip className="h-5 w-5 text-muted-foreground" />;
+}
+
+const ReplyCard = ({ reply }: { reply: TopicReply }) => {
+    const [author, setAuthor] = useState<{name: string, avatar: string} | null>(null);
+
+    useEffect(() => {
+        const fetchAuthor = async () => {
+            const user = await getUser(reply.authorId);
+            if (user) {
+                setAuthor({ name: user.name, avatar: user.avatar });
+            }
+        }
+        fetchAuthor();
+    }, [reply.authorId]);
+
+    if (!author) {
+        return <Skeleton className="h-20 w-full" />;
+    }
+
+    return (
+         <div className="flex items-start gap-4">
+            <UserProfileHoverCard user={{id: reply.authorId, name: author.name, avatar: author.avatar, email: '', role: reply.role, status: 'Active'}}>
+                <Link href={`/profile/${reply.authorId}`}>
+                    <Avatar>
+                        <AvatarImage src={author.avatar} alt={author.name} />
+                        <AvatarFallback>{author.name?.charAt(0) || 'U'}</AvatarFallback>
+                    </Avatar>
+                </Link>
+            </UserProfileHoverCard>
+            <div className="flex-1">
+                <div className="flex justify-between items-center">
+                    <p className="font-semibold">
+                        <UserProfileHoverCard user={{id: reply.authorId, name: author.name, avatar: author.avatar, email: '', role: reply.role, status: 'Active'}}>
+                             <Link href={`/profile/${reply.authorId}`} className="hover:underline">{author.name}</Link>
+                        </UserProfileHoverCard>
+                        <span className="text-xs font-normal text-muted-foreground capitalize"> ({reply.role})</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">{new Date(reply.timestamp).toLocaleString()}</p>
+                </div>
+                <p className="text-sm mt-1 p-3 bg-muted/50 rounded-lg">{reply.text}</p>
+            </div>
+        </div>
+    )
 }
 
 export default function TopicDetailClient({ topicId }: { topicId: string }) {
@@ -69,7 +115,6 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
             const fetchedTopic = await getTopic(topicId);
             setTopic(fetchedTopic);
 
-            // Students don't need the full course list, other roles might for tutor checks etc.
             if (!isStudent) {
                 const fetchedCourses = await getCourses();
                 setCourses(fetchedCourses);
@@ -90,6 +135,7 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
 
     const reply: TopicReply = {
         author: user.name,
+        authorId: user.id,
         authorAvatar: user.avatar,
         role: user.role,
         text: newReply,
@@ -98,15 +144,12 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
     
     try {
         await addReply(topic.id, reply);
-
-        // Optimistically update the UI immediately
         setTopic(prev => prev ? { ...prev, replies: [...(prev.replies || []), reply] } : null);
         setNewReply("");
         
-        // Send notifications to subscribers in the background
         if (topic.subscribers && topic.subscribers.length > 0) {
             for (const subscriberId of topic.subscribers) {
-                if (subscriberId !== user.id) { // Don't notify the person who replied
+                if (subscriberId !== user.id) { 
                     await addNotification({
                         userId: subscriberId,
                         text: `${user.name} replied to the topic: "${topic.title}"`,
@@ -117,10 +160,9 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
                 }
             }
         }
-
         toast({ title: "Reply posted!" });
     } catch (error) {
-        toast({ title: "Error posting reply", description: "Your message was posted, but there was an issue sending notifications.", variant: "destructive" });
+        toast({ title: "Error posting reply", variant: "destructive" });
     } finally {
         setReplying(false);
     }
@@ -137,7 +179,7 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
     try {
         await updateTopic(topic.id, { subscribers: newSubscribers });
         setTopic(prev => prev ? { ...prev, subscribers: newSubscribers } : null);
-        toast({ title: isSubscribed ? "Unsubscribed" : "Subscribed!", description: `You will ${isSubcribed ? 'no longer' : 'now'} receive notifications for this topic.`});
+        toast({ title: isSubscribed ? "Unsubscribed" : "Subscribed!", description: `You will ${isSubscribed ? 'no longer' : 'now'} receive notifications for this topic.`});
     } catch (error) {
         toast({ title: "Error updating subscription", variant: "destructive" });
     }
@@ -243,11 +285,15 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
                </div>
             </div>
              <div className="flex items-center gap-2 text-sm text-muted-foreground pt-4">
-                <Avatar className="h-8 w-8">
-                    <AvatarImage src={topic.authorAvatar} alt={topic.author} />
-                    <AvatarFallback>{topic.author?.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <span>Created by {topic.author}</span>
+                 <UserProfileHoverCard user={topic as unknown as User}>
+                    <Link href={`/profile/${topic.authorId}`}>
+                        <Avatar className="h-8 w-8">
+                            <AvatarImage src={topic.authorAvatar} alt={topic.author} />
+                            <AvatarFallback>{topic.author?.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                    </Link>
+                </UserProfileHoverCard>
+                <span>Created by <UserProfileHoverCard user={topic as unknown as User}><Link href={`/profile/${topic.authorId}`} className="font-semibold hover:underline">{topic.author}</Link></UserProfileHoverCard></span>
               </div>
           </CardHeader>
           <Separator />
@@ -255,19 +301,7 @@ export default function TopicDetailClient({ topicId }: { topicId: string }) {
             <h2 className="text-xl font-semibold font-headline mb-4">Discussion</h2>
             <div className="space-y-6">
               {topic.replies?.map((reply, index) => (
-                <div key={index} className="flex items-start gap-4">
-                    <Avatar>
-                        <AvatarImage src={reply.authorAvatar} alt={reply.author} />
-                        <AvatarFallback>{reply.author?.charAt(0) || 'U'}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                        <div className="flex justify-between items-center">
-                            <p className="font-semibold">{reply.author} <span className="text-xs font-normal text-muted-foreground capitalize">({reply.role})</span></p>
-                            <p className="text-xs text-muted-foreground">{new Date(reply.timestamp).toLocaleString()}</p>
-                        </div>
-                        <p className="text-sm mt-1 p-3 bg-muted/50 rounded-lg">{reply.text}</p>
-                    </div>
-                </div>
+                <ReplyCard key={index} reply={reply} />
               ))}
               {(!topic.replies || topic.replies.length === 0) && (
                 <p className="text-sm text-muted-foreground text-center py-4">No replies yet.</p>

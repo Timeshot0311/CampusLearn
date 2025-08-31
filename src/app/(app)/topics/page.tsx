@@ -22,6 +22,8 @@ import { Topic, addTopic, getTopics } from "@/services/topic-service";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCourses, getStudentCourses, Course } from "@/services/course-service";
 import { CreateTopicDialog } from "@/components/create-topic-dialog";
+import { UserProfileHoverCard } from "@/components/user-profile-hover-card";
+import { User } from "@/services/user-service";
 
 
 export default function TopicsPage() {
@@ -49,7 +51,6 @@ export default function TopicsPage() {
 
             const allTopics = await getTopics();
             
-            // For students, filter topics to only those in their courses or general topics
             if (isStudent) {
                  const studentCourseTitles = new Set(fetchedCourses.map(c => c.title));
                  const filteredTopics = allTopics.filter(topic => 
@@ -116,11 +117,17 @@ export default function TopicsPage() {
                 <CardHeader>
                 <CardTitle className="font-headline text-lg">{topic.title}</CardTitle>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2">
-                    <Avatar className="h-6 w-6">
-                        <AvatarImage src={topic.authorAvatar} alt={topic.author} />
-                        <AvatarFallback>{topic.author.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <span>{topic.author}</span>
+                    <UserProfileHoverCard user={topic as unknown as User}>
+                         <Link href={`/profile/${topic.authorId}`}>
+                            <Avatar className="h-6 w-6">
+                                <AvatarImage src={topic.authorAvatar} alt={topic.author} />
+                                <AvatarFallback>{topic.author.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                        </Link>
+                    </UserProfileHoverCard>
+                    <UserProfileHoverCard user={topic as unknown as User}>
+                        <Link href={`/profile/${topic.authorId}`} className="hover:underline">{topic.author}</Link>
+                    </UserProfileHoverCard>
                 </div>
                 <CardDescription className="pt-2 line-clamp-3">{topic.description}</CardDescription>
                 </CardHeader>

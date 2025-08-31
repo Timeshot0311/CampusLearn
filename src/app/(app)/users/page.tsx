@@ -33,6 +33,8 @@ import { addUser, deleteUser, getUsers, updateUser, User, getUserCourses } from 
 import { getCourses, Course } from "@/services/course-service";
 import { EnrollStudentDialog } from "@/components/enroll-student-dialog";
 import { UserDialog } from "@/components/user-dialog";
+import { UserProfileHoverCard } from "@/components/user-profile-hover-card";
+import Link from "next/link";
 
 function DeleteUserAlert({ userId, onDelete }: { userId: string, onDelete: (id: string) => void }) {
     return (
@@ -155,12 +157,18 @@ export default function UsersPage() {
                         <TableRow key={user.id}>
                             <TableCell>
                             <div className="flex items-center gap-3">
-                                <Avatar>
-                                <AvatarImage src={user.avatar} />
-                                <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                                </Avatar>
+                                <UserProfileHoverCard user={user}>
+                                    <Link href={`/profile/${user.id}`}>
+                                        <Avatar>
+                                            <AvatarImage src={user.avatar} />
+                                            <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                        </Avatar>
+                                    </Link>
+                                </UserProfileHoverCard>
                                 <div>
-                                    <p className="font-medium">{user.name}</p>
+                                    <UserProfileHoverCard user={user}>
+                                        <Link href={`/profile/${user.id}`} className="font-medium hover:underline">{user.name}</Link>
+                                    </UserProfileHoverCard>
                                     <p className="text-sm text-muted-foreground">{user.email}</p>
                                 </div>
                             </div>

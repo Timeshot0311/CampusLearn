@@ -14,6 +14,7 @@ export type LearningMaterial = {
 
 export type TopicReply = {
     author: string;
+    authorId: string;
     authorAvatar: string;
     role: string;
     text: string;
@@ -38,6 +39,7 @@ export type Topic = {
   description: string;
   course: string;
   author: string;
+  authorId: string;
   authorAvatar: string;
   replies: TopicReply[]; 
   status: TopicStatus;

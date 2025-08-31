@@ -70,6 +70,7 @@ export function CreateTopicDialog({
                 description,
                 course: courseName,
                 author: user.name,
+                authorId: user.id,
                 authorAvatar: user.avatar,
                 replies: [],
                 status: "Open",

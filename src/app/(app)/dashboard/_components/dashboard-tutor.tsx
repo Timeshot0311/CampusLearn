@@ -36,6 +36,8 @@ import { FeedbackGeneratorDialog } from "@/components/feedback-generator-dialog"
 import { Topic, getTopics } from "@/services/topic-service";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
+import { UserProfileHoverCard } from "@/components/user-profile-hover-card";
+import { User } from "@/services/user-service";
 
 const performanceData = [
   { name: 'Quiz 1', avgScore: 78 },
@@ -69,10 +71,25 @@ function StudentQuestionsCard() {
         };
         if (user.assignedCourses && user.assignedCourses.length > 0) {
             fetchTopics();
-        } else {
+        } else if(user.role !== 'student') {
+             // Fetch all for admin/non-students without assigned courses
+            const fetchAllTopics = async () => {
+                setLoading(true);
+                try {
+                    const allTopics = await getTopics();
+                     setTopics(allTopics.filter(t => t.status !== 'Closed').sort((a,b) => (b.replies?.[b.replies.length-1]?.timestamp || 0) > (a.replies?.[a.replies.length-1]?.timestamp || 0) ? 1 : -1));
+                } catch(e) {
+                    toast({title: "Error fetching all topics", variant: "destructive"});
+                } finally {
+                    setLoading(false);
+                }
+            }
+            fetchAllTopics();
+        } 
+        else {
             setLoading(false);
         }
-    }, [toast, user.assignedCourses]);
+    }, [toast, user.assignedCourses, user.role]);
 
 
     return (
@@ -91,14 +108,18 @@ function StudentQuestionsCard() {
                     {topics.slice(0, 5).map((topic) => (
                         <div key={topic.id} className="flex items-start justify-between">
                            <div className="flex items-start gap-4">
-                                <Avatar className="h-10 w-10 border">
-                                    <AvatarImage src={topic.authorAvatar} alt={topic.author} />
-                                    <AvatarFallback>{topic.author.charAt(0)}</AvatarFallback>
-                                </Avatar>
+                                <UserProfileHoverCard user={topic as unknown as User}>
+                                    <Link href={`/profile/${topic.authorId}`}>
+                                        <Avatar className="h-10 w-10 border">
+                                            <AvatarImage src={topic.authorAvatar} alt={topic.author} />
+                                            <AvatarFallback>{topic.author.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                    </Link>
+                                </UserProfileHoverCard>
                                 <div>
                                     <p className="font-medium text-sm">{topic.title}</p>
                                     <p className="text-xs text-muted-foreground">
-                                        From {topic.author} in <span className="font-semibold">{topic.course}</span>
+                                        From <UserProfileHoverCard user={topic as unknown as User}><Link href={`/profile/${topic.authorId}`} className="hover:underline">{topic.author}</Link></UserProfileHoverCard> in <span className="font-semibold">{topic.course}</span>
                                     </p>
                                 </div>
                            </div>
@@ -120,16 +141,18 @@ function StudentQuestionsCard() {
 }
 
 export function DashboardTutor() {
+    const { user } = useAuth();
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [submissions, setSubmissions] = useState<Submission[]>([]);
 
     useEffect(() => {
+        if (!user.id) return;
         const fetchData = async () => {
             setLoading(true);
             try {
                 const [fetchedSubmissions] = await Promise.all([
-                    getTutorSubmissions("tutor-id-placeholder"),
+                    getTutorSubmissions(user.id),
                 ]);
                 setSubmissions(fetchedSubmissions);
             } catch (error) {
@@ -139,7 +162,7 @@ export function DashboardTutor() {
             }
         };
         fetchData();
-    }, [toast]);
+    }, [toast, user.id]);
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -160,7 +183,7 @@ export function DashboardTutor() {
                     <CardDescription>Assignments needing review</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-4xl font-bold">{submissions.length}</p>
+                    <p className="text-4xl font-bold">{loading ? "..." : submissions.length}</p>
                 </CardContent>
             </Card>
         </div>
