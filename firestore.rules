@@ -56,8 +56,10 @@ service cloud.firestore {
 
     match /topics/{topicId} {
       allow read, create: if isAuth();
-      // Corrected Rule: Allow any authenticated user to update a topic to post replies.
-      allow update: if isAuth();
+      allow update: if isAuth() && (
+            isOwner(resource.data.authorId) ||
+            isTutorOrLecturer(request.auth.uid) || 
+            isAdmin(request.auth.uid));
       allow delete: if isAuth() && (isTutorOrLecturer(request.auth.uid) || isAdmin(request.auth.uid));
     }
 

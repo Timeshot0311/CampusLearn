@@ -144,7 +144,7 @@ export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
           {generatedQuizJson && (
              <div className="grid gap-2">
               <Label>Generated Quiz (Preview)</Label>
-              <Textarea readOnly value={generatedQuizJson} rows={10} className="font-mono text-xs bg-muted" />
+              <Textarea readOnly value={JSON.stringify(JSON.parse(generatedQuizJson), null, 2)} rows={10} className="font-mono text-xs bg-muted" />
             </div>
           )}
         </div>
