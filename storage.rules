@@ -1,8 +1,8 @@
+
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-
     // This is a security best practice. By default, no one can read or write to any file.
     // We then open up specific paths below.
     match /{allPaths=**} {
@@ -27,7 +27,7 @@ service firebase.storage {
     // This rule governs user profile pictures.
     // Anyone can read an avatar, but a user can only write to their own avatar folder.
     // The {userId} wildcard must match the ID of the logged-in user.
-    match /avatars/{userId}/{allPaths=**} {
+    match /avatars/{userId}/{fileName} {
       allow read;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
