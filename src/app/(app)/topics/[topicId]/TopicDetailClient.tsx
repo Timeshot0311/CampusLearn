@@ -41,6 +41,7 @@ const ReplyCard = ({ reply }: { reply: TopicReply }) => {
 
     useEffect(() => {
         const fetchAuthor = async () => {
+            if (!reply.authorId) return; // Add this check
             const user = await getUser(reply.authorId);
             if (user) {
                 setAuthor({ name: user.name, avatar: user.avatar });
