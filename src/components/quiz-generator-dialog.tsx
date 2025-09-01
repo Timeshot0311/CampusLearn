@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -10,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Lightbulb } from "lucide-react";
+import { Loader2, Lightbulb, Upload } from "lucide-react";
 import { Quiz, Question } from "@/services/topic-service";
 
 type QuizGeneratorDialogProps = {
@@ -181,6 +182,22 @@ export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
     }
   };
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        setMaterial(text);
+        toast({ title: "File Loaded", description: `${file.name} has been loaded as learning material.` });
+      };
+      reader.onerror = () => {
+        toast({ title: "Error Reading File", variant: "destructive" });
+      };
+      reader.readAsText(file);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -209,10 +226,19 @@ export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="material">Learning Material</Label>
+            <div className="flex justify-between items-center mb-2">
+                <Label htmlFor="material">Learning Material</Label>
+                <Button asChild variant="outline" size="sm">
+                    <label htmlFor="material-file-upload" className="cursor-pointer flex items-center gap-2">
+                        <Upload className="h-4 w-4" />
+                        Upload File
+                    </label>
+                </Button>
+                <Input id="material-file-upload" type="file" className="hidden" accept=".txt,.md,.html,.json,text/*" onChange={handleFileChange} />
+            </div>
             <Textarea
               id="material"
-              placeholder="Paste your content here..."
+              placeholder="Paste your content here or upload a file..."
               rows={10}
               value={material}
               onChange={(e) => setMaterial(e.target.value)}
