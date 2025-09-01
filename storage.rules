@@ -2,32 +2,42 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Rules for user avatars
+
+    // This is a security best practice. By default, no one can read or write to any file.
+    // We then open up specific paths below.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // This rule allows anyone (even unauthenticated users) to read files from the /courses/ path.
+    // This is useful for public course materials.
+    // Only authenticated users can write files here (e.g., a lecturer uploading lesson content).
+    match /courses/{courseId}/{allPaths=**} {
+      allow read;
+      allow write: if request.auth != null;
+    }
+
+    // This rule allows anyone to read files from the /topics/ path (e.g., shared learning materials).
+    // Only authenticated users can write files here.
+    match /topics/{topicId}/{allPaths=**} {
+      allow read;
+      allow write: if request.auth != null;
+    }
+
+    // This rule governs user profile pictures.
+    // Anyone can read an avatar, but a user can only write to their own avatar folder.
+    // The {userId} wildcard must match the ID of the logged-in user.
     match /avatars/{userId}/{allPaths=**} {
       allow read;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Rules for course files
-    match /courses/{courseId}/{allPaths=**} {
-      allow read;
-      // Allow write if user is authenticated (simplification, could be restricted to tutors/admins)
-      allow write: if request.auth != null;
-    }
-
-    // Rules for assignment submissions
+    // This is the new rule for assignment submissions.
+    // Any authenticated user can read files (e.g., a tutor needs to view the submission).
+    // A user can ONLY write to their own submission folder. The {studentId} in the path must match their user ID.
     match /submissions/{courseId}/{assignmentId}/{studentId}/{fileName} {
-      // Allow read for any authenticated user (e.g., tutors, admins, or the student themselves)
       allow read: if request.auth != null;
-      // Only allow a student to write to their own submission path
       allow write: if request.auth != null && request.auth.uid == studentId;
-    }
-    
-    // Rules for topic materials
-    match /topics/{topicId}/{allPaths=**} {
-      allow read;
-      // Allow write for any authenticated user
-      allow write: if request.auth != null;
     }
   }
 }
