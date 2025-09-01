@@ -21,8 +21,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
-import { Assignment, Submission, getStudentAssignments, getTutorSubmissions, updateSubmission, addSubmission, SubmissionStatus } from "@/services/assignment-service";
+import { File, FileText, Loader2, Upload } from "lucide-react";
+import { Assignment, Submission, getStudentAssignments, getTutorSubmissions, updateSubmission, addSubmission, SubmissionStatus, uploadAssignmentFile } from "@/services/assignment-service";
 import { Course, getCourses, getStudentCourses } from "@/services/course-service";
 import { addGrade } from "@/services/grade-service";
 import { Input } from "@/components/ui/input";
@@ -32,14 +32,22 @@ import { addNotification } from "@/services/topic-service";
 function SubmitAssignmentDialog({ assignment, onSubmitted }: { assignment: (Assignment & {status: SubmissionStatus}); onSubmitted: () => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [submissionContent, setSubmissionContent] = useState("");
+  const [submissionFile, setSubmissionFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setSubmissionFile(e.target.files[0]);
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!submissionContent.trim() || !user) return;
+    if (!submissionFile || !user) return;
     setLoading(true);
     try {
+        const fileUrl = await uploadAssignmentFile(assignment.courseId, assignment.id, user.id, submissionFile);
+        
         await addSubmission({
             studentId: user.id,
             studentName: user.name,
@@ -49,11 +57,15 @@ function SubmitAssignmentDialog({ assignment, onSubmitted }: { assignment: (Assi
             assignmentId: assignment.id,
             assignmentName: assignment.name,
             submittedDate: new Date().toISOString(),
-            submissionContent: submissionContent,
+            submissionContent: fileUrl,
+            fileName: submissionFile.name,
         });
+
         toast({ title: "Assignment Submitted!", description: "Your submission has been received."});
         onSubmitted();
         setOpen(false);
+        setSubmissionFile(null);
+
     } catch (error) {
         toast({ title: "Error", description: "Failed to submit assignment.", variant: "destructive" });
     } finally {
@@ -62,7 +74,7 @@ function SubmitAssignmentDialog({ assignment, onSubmitted }: { assignment: (Assi
   };
 
   return (
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(isOpen) => { setOpen(isOpen); if(!isOpen) setSubmissionFile(null); }}>
         <DialogTrigger asChild>
           <Button size="sm" disabled={assignment.status !== 'In Progress'}>
             {assignment.status === 'Submitted' ? 'Submitted' : 'Submit'}
@@ -75,13 +87,30 @@ function SubmitAssignmentDialog({ assignment, onSubmitted }: { assignment: (Assi
             </DialogHeader>
             <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                    <Label htmlFor="submission">Your Submission</Label>
-                    <Textarea id="submission" rows={10} value={submissionContent} onChange={e => setSubmissionContent(e.target.value)} placeholder="Type your assignment submission here..."/>
+                    <Label htmlFor="submission-file">Your Submission File</Label>
+                     <label htmlFor="submission-file" className="relative flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted">
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            {submissionFile ? (
+                                <>
+                                    <FileText className="w-10 h-10 mb-3 text-primary" />
+                                    <p className="mb-2 text-sm text-foreground"><span className="font-semibold">{submissionFile.name}</span></p>
+                                    <p className="text-xs text-muted-foreground">Click again to change file</p>
+                                </>
+                            ) : (
+                                <>
+                                    <Upload className="w-10 h-10 mb-3 text-muted-foreground" />
+                                    <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                                    <p className="text-xs text-muted-foreground">Any file format is accepted</p>
+                                </>
+                            )}
+                        </div>
+                        <Input id="submission-file" type="file" className="hidden" onChange={handleFileChange} />
+                    </label>
                 </div>
             </div>
             <DialogFooter>
                 <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-                <Button onClick={handleSubmit} disabled={loading || !submissionContent.trim()}>
+                <Button onClick={handleSubmit} disabled={loading || !submissionFile}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Submit
                 </Button>
@@ -158,7 +187,12 @@ function GradeDialog({ submission, onGraded }: { submission: Submission; onGrade
           <DialogDescription>Student: {submission.studentName} | Course: {submission.courseTitle}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-            <p className="text-sm text-muted-foreground p-4 bg-muted/50 rounded-lg"><strong>Submission:</strong> {submission.submissionContent}</p>
+            <a href={submission.submissionContent} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline">
+                    <File className="mr-2 h-4 w-4" />
+                    View Submitted File: {submission.fileName || "View File"}
+                </Button>
+            </a>
           
           <div className="grid gap-2">
             <Label htmlFor="grade">Grade</Label>

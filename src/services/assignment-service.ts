@@ -1,6 +1,7 @@
 
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import { collection, getDocs, doc, addDoc, updateDoc, query, where, setDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Course } from './course-service';
 import { User } from './user-service';
 
@@ -24,7 +25,8 @@ export type Submission = {
     assignmentId: string;
     assignmentName: string;
     submittedDate: string; 
-    submissionContent: string;
+    submissionContent: string; // URL to the file
+    fileName?: string; // Name of the submitted file
     status: SubmissionStatus;
     feedback?: string;
     grade?: string;
@@ -36,7 +38,7 @@ export async function getStudentAssignments(studentId: string, enrolledCourses: 
     
     const courseIds = enrolledCourses.map(c => c.id);
     
-    // 1. Get all assignments for the student's courses
+    // 1. Get all all assignments for the student's courses
     const assignmentsCollection = collection(db, 'assignments');
     const assignmentsQuery = query(assignmentsCollection, where("courseId", "in", courseIds));
     const assignmentsSnapshot = await getDocs(assignmentsQuery);
@@ -87,6 +89,16 @@ export async function getCourseAssignments(courseId: string): Promise<Assignment
     const q = query(assignmentsCollection, where("courseId", "==", courseId));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Assignment));
+}
+
+// Upload a file for an assignment submission
+export async function uploadAssignmentFile(courseId: string, assignmentId: string, studentId: string, file: File): Promise<string> {
+    if (!storage) throw new Error("Firebase Storage not initialized");
+    const filePath = `submissions/${courseId}/${assignmentId}/${studentId}/${file.name}`;
+    const storageRef = ref(storage, filePath);
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+    return downloadURL;
 }
 
 // Submit work for an assignment
