@@ -189,7 +189,10 @@ export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
       reader.onload = (e) => {
         const text = e.target?.result as string;
         setMaterial(text);
-        toast({ title: "File Loaded", description: `${file.name} has been loaded as learning material.` });
+        toast({
+          title: "File Loaded",
+          description: `${file.name} has been loaded. Note: Only text content will be used.`,
+        });
       };
       reader.onerror = () => {
         toast({ title: "Error Reading File", variant: "destructive" });
@@ -234,7 +237,7 @@ export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
                         Upload File
                     </label>
                 </Button>
-                <Input id="material-file-upload" type="file" className="hidden" accept=".txt,.md,.html,.json,text/*" onChange={handleFileChange} />
+                <Input id="material-file-upload" type="file" className="hidden" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt" onChange={handleFileChange} />
             </div>
             <Textarea
               id="material"
