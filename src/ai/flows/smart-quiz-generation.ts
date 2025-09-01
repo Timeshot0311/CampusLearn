@@ -20,6 +20,10 @@ const GenerateQuizInputSchema = z.object({
   numberOfQuestions: z
     .number()
     .describe('The number of questions to generate in the quiz.'),
+  promptInstructions: z
+    .string()
+    .optional()
+    .describe('Optional instructions from the user on how to generate the quiz. For example, "Focus on the historical dates mentioned."'),
 });
 export type GenerateQuizInput = z.infer<typeof GenerateQuizInputSchema>;
 
@@ -41,6 +45,12 @@ const prompt = ai.definePrompt({
 Learning Material: {{{learningMaterial}}}
 
 Number of Questions: {{{numberOfQuestions}}}
+
+{{#if promptInstructions}}
+The user has provided the following instructions for quiz generation, which you must follow:
+"{{{promptInstructions}}}"
+{{/if}}
+
 
 The quiz must be a valid JSON object. The JSON object should have a single key "quiz" which is an array of question objects. Each question object must have the following fields:
 - "question": The question text.

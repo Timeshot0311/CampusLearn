@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Lightbulb, Upload } from "lucide-react";
+import { Loader2, Lightbulb, Upload, FileText, X } from "lucide-react";
 import { Quiz, Question } from "@/services/topic-service";
 
 type QuizGeneratorDialogProps = {
@@ -97,19 +97,32 @@ function validateQuestions(qs: NormalizedQuestion[]): { ok: boolean; message?: s
 export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [material, setMaterial] = useState("");
+  const [learningMaterial, setLearningMaterial] = useState("");
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [promptInstructions, setPromptInstructions] = useState("");
   const [numQuestions, setNumQuestions] = useState(5);
   const [quizTitle, setQuizTitle] = useState("");
   const [generatedQuizJson, setGeneratedQuizJson] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+
+  const resetState = () => {
+    setLearningMaterial("");
+    setUploadedFile(null);
+    setPromptInstructions("");
+    setNumQuestions(5);
+    setQuizTitle("");
+    setGeneratedQuizJson(null);
+    setLoading(false);
+  }
 
   const handleGenerate = async () => {
     setLoading(true);
     setGeneratedQuizJson(null);
     try {
       const result = await generateQuiz({
-        learningMaterial: material,
+        learningMaterial: learningMaterial,
         numberOfQuestions: numQuestions,
+        promptInstructions: promptInstructions,
       });
       // store exactly as a string (handles both string/object returns)
       const payload = typeof result?.quiz === "string" ? result.quiz : JSON.stringify(result?.quiz ?? result);
@@ -165,12 +178,8 @@ export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
       await Promise.resolve(onSave(quizToSave));
 
       setOpen(false);
-      // reset for next time
-      setMaterial("");
-      setNumQuestions(5);
-      setQuizTitle("");
-      setGeneratedQuizJson(null);
-
+      resetState();
+      
       toast({ title: "Quiz Saved", description: "Your quiz was saved to this topic." });
     } catch (error: any) {
       console.error(error);
@@ -188,10 +197,11 @@ export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const text = e.target?.result as string;
-        setMaterial(text);
+        setLearningMaterial(text);
+        setUploadedFile(file);
         toast({
           title: "File Loaded",
-          description: `${file.name} has been loaded. Note: Only text content will be used.`,
+          description: `${file.name} is ready. Only text content will be used.`,
         });
       };
       reader.onerror = () => {
@@ -201,8 +211,16 @@ export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
     }
   };
 
+  const handleRemoveFile = () => {
+    setUploadedFile(null);
+    setLearningMaterial("");
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+        setOpen(isOpen);
+        if (!isOpen) resetState();
+    }}>
       <DialogTrigger asChild>
         <Button className="w-full">
           <Lightbulb className="mr-2 h-4 w-4" />
@@ -213,7 +231,7 @@ export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
         <DialogHeader>
           <DialogTitle>Smart Quiz Generation</DialogTitle>
           <DialogDescription>
-            Paste in any learning material (e.g., lecture notes, an article, a video transcript) to automatically generate a practice quiz for this topic.
+            Paste in any learning material or upload a file to automatically generate a practice quiz for this topic.
           </DialogDescription>
         </DialogHeader>
 
@@ -227,26 +245,53 @@ export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
               onChange={(e) => setQuizTitle(e.target.value)}
             />
           </div>
-
-          <div className="grid gap-2">
-            <div className="flex justify-between items-center mb-2">
-                <Label htmlFor="material">Learning Material</Label>
-                <Button asChild variant="outline" size="sm">
-                    <label htmlFor="material-file-upload" className="cursor-pointer flex items-center gap-2">
-                        <Upload className="h-4 w-4" />
-                        Upload File
-                    </label>
-                </Button>
-                <Input id="material-file-upload" type="file" className="hidden" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt" onChange={handleFileChange} />
+          
+          {!uploadedFile ? (
+            <div className="grid gap-2">
+                <div className="flex justify-between items-center mb-2">
+                    <Label htmlFor="material">Learning Material</Label>
+                    <Button asChild variant="outline" size="sm">
+                        <label htmlFor="material-file-upload" className="cursor-pointer flex items-center gap-2">
+                            <Upload className="h-4 w-4" />
+                            Upload File
+                        </label>
+                    </Button>
+                    <Input id="material-file-upload" type="file" className="hidden" accept=".txt,.pdf,.doc,.docx,.ppt,.pptx" onChange={handleFileChange} />
+                </div>
+                <Textarea
+                id="material"
+                placeholder="Paste your content here or upload a file..."
+                rows={10}
+                value={learningMaterial}
+                onChange={(e) => setLearningMaterial(e.target.value)}
+                />
             </div>
-            <Textarea
-              id="material"
-              placeholder="Paste your content here or upload a file..."
-              rows={10}
-              value={material}
-              onChange={(e) => setMaterial(e.target.value)}
-            />
-          </div>
+          ) : (
+             <div className="space-y-4">
+                <div className="grid gap-2">
+                    <Label>Uploaded File</Label>
+                    <div className="flex items-center justify-between p-3 rounded-md border bg-muted/50">
+                        <div className="flex items-center gap-3">
+                            <FileText className="h-5 w-5 text-primary" />
+                            <span className="text-sm font-medium">{uploadedFile.name}</span>
+                        </div>
+                         <Button variant="ghost" size="icon" onClick={handleRemoveFile} className="h-6 w-6">
+                            <X className="h-4 w-4"/>
+                         </Button>
+                    </div>
+                </div>
+                 <div className="grid gap-2">
+                    <Label htmlFor="prompt-instructions">Prompting Instructions (Optional)</Label>
+                    <Textarea
+                        id="prompt-instructions"
+                        placeholder="e.g., 'Focus on the key dates and events mentioned in the document.' or 'Create questions about the main characters.'"
+                        rows={4}
+                        value={promptInstructions}
+                        onChange={(e) => setPromptInstructions(e.target.value)}
+                    />
+                </div>
+            </div>
+          )}
 
           <div className="grid gap-2">
             <Label htmlFor="num-questions">Number of Questions</Label>
@@ -259,7 +304,7 @@ export function QuizGeneratorDialog({ onSave }: QuizGeneratorDialogProps) {
             />
           </div>
 
-          <Button onClick={handleGenerate} disabled={loading || !material.trim()} className="w-fit">
+          <Button onClick={handleGenerate} disabled={loading || !learningMaterial.trim()} className="w-fit">
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {loading ? "Generating..." : "Generate Quiz"}
           </Button>
