@@ -26,6 +26,14 @@ const ModuleSchema = z.object({
     lessons: z.array(LessonSchema)
 });
 
+const GradeSchema = z.object({
+    id: z.string(),
+    assignmentName: z.string(),
+    grade: z.string(),
+    feedback: z.string().optional(),
+    date: z.string(),
+});
+
 const AiTutoringAssistantInputSchema = z.object({
   question: z.string().describe('The question from the student.'),
   course: z.object({
@@ -34,6 +42,7 @@ const AiTutoringAssistantInputSchema = z.object({
     description: z.string(),
     modules: z.array(ModuleSchema)
   }).describe('The course context for the question.'),
+  grades: z.array(GradeSchema).describe("The student's grades for this course."),
 });
 export type AiTutoringAssistantInput = z.infer<typeof AiTutoringAssistantInputSchema>;
 
@@ -50,7 +59,7 @@ const prompt = ai.definePrompt({
   name: 'aiTutoringAssistantPrompt',
   input: {schema: AiTutoringAssistantInputSchema},
   output: {schema: AiTutoringAssistantOutputSchema},
-  prompt: `You are an AI tutoring assistant for a platform called CampusLearn. You must answer the student's question based *only* on the provided course materials. If the answer cannot be found in the materials, state that you do not have that information in the course content.
+  prompt: `You are an AI tutoring assistant for a platform called CampusLearn. You must answer the student's question based *only* on the provided course materials and the student's grade history. If the answer cannot be found in the materials, state that you do not have that information in the course content.
 
 Course Title: {{{course.title}}}
 Course Description: {{{course.description}}}
@@ -63,6 +72,18 @@ Module: {{title}}
     Content: {{content}}
   {{/each}}
 {{/each}}
+
+Student's Grade History for this Course:
+{{#if grades}}
+  {{#each grades}}
+  - Assignment: "{{assignmentName}}"
+    Grade: {{grade}}
+    Feedback: {{feedback}}
+    Date: {{date}}
+  {{/each}}
+{{else}}
+No grades have been recorded for this course yet.
+{{/if}}
 
 Student's Question: {{{question}}}
 

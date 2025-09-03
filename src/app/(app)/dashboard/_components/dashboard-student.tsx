@@ -25,7 +25,7 @@ import { Bot, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useEffect, useState, useMemo } from "react";
-import { aiTutoringAssistant } from "@/ai/flows/ai-tutoring-assistant";
+import { aiTutoringAssistant, AiTutoringAssistantInput } from "@/ai/flows/ai-tutoring-assistant";
 import { getLearningRecommendations } from "@/ai/flows/learning-recommendations";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
@@ -34,6 +34,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Assignment, getStudentAssignments } from "@/services/assignment-service";
 import { useAuth } from "@/hooks/use-auth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Grade, getStudentGrades } from "@/services/grade-service";
 
 
 function CourseCard({ course }: { course: Course }) {
@@ -88,6 +89,7 @@ export function DashboardStudent() {
   const [tutorLoading, setTutorLoading] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [courseGrades, setCourseGrades] = useState<Grade[]>([]);
 
   const [recommendations, setRecommendations] = useState([
     "Click 'Get New Recommendations' to generate a personalized learning path."
@@ -119,12 +121,17 @@ export function DashboardStudent() {
   }, [toast, user?.id]);
   
   useEffect(() => {
-    if (selectedCourseId) {
+    if (selectedCourseId && user?.id) {
       const fetchCourseDetails = async () => {
         setTutorLoading(true);
         try {
           const courseDetails = await getCourse(selectedCourseId);
           setSelectedCourse(courseDetails);
+
+          // Also fetch grades for this course
+          const allGrades = await getStudentGrades(user.id);
+          setCourseGrades(allGrades.filter(g => g.courseId === selectedCourseId));
+          
         } catch (error) {
           toast({ title: "Error fetching course details", variant: "destructive" });
         } finally {
@@ -133,7 +140,7 @@ export function DashboardStudent() {
       };
       fetchCourseDetails();
     }
-  }, [selectedCourseId, toast]);
+  }, [selectedCourseId, toast, user?.id]);
 
 
   const handleAskTutor = async () => {
@@ -148,6 +155,7 @@ export function DashboardStudent() {
       const result = await aiTutoringAssistant({
         question: currentQuestion,
         course: selectedCourse,
+        grades: courseGrades,
       });
       setTutorHistory(prev => [...prev, { type: 'ai', text: result.answer }]);
     } catch (error) {
