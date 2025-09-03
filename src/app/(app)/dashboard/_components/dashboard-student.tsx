@@ -21,18 +21,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Bot } from "lucide-react";
+import { Bot, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { aiTutoringAssistant } from "@/ai/flows/ai-tutoring-assistant";
 import { getLearningRecommendations } from "@/ai/flows/learning-recommendations";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { Course, getStudentCourses } from "@/services/course-service";
+import { Course, getStudentCourses, getCourse } from "@/services/course-service";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Assignment, getStudentAssignments } from "@/services/assignment-service";
 import { useAuth } from "@/hooks/use-auth";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 function CourseCard({ course }: { course: Course }) {
@@ -76,15 +77,17 @@ function CourseCard({ course }: { course: Course }) {
 export function DashboardStudent() {
   const { toast } = useToast();
   const { user } = useAuth();
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([]);
   const [deadlines, setDeadlines] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [tutorQuestion, setTutorQuestion] = useState("");
   const [tutorHistory, setTutorHistory] = useState<{ type: 'user' | 'ai'; text: string }[]>([
-      { type: 'ai', text: "Hello! How can I help you with your studies today?" }
+      { type: 'ai', text: "Hello! Select a course and I can help you with your studies today." }
   ]);
   const [tutorLoading, setTutorLoading] = useState(false);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
   const [recommendations, setRecommendations] = useState([
     "Click 'Get New Recommendations' to generate a personalized learning path."
@@ -98,7 +101,7 @@ export function DashboardStudent() {
         setLoading(true);
         try {
             const fetchedCourses = await getStudentCourses(user.id);
-            setCourses(fetchedCourses.slice(0, 2));
+            setEnrolledCourses(fetchedCourses);
 
             const fetchedAssignments = await getStudentAssignments(user.id, fetchedCourses);
             setDeadlines(fetchedAssignments.filter(a => a.status !== "Submitted" && a.status !== "Graded"));
@@ -114,18 +117,37 @@ export function DashboardStudent() {
     };
     fetchData();
   }, [toast, user?.id]);
+  
+  useEffect(() => {
+    if (selectedCourseId) {
+      const fetchCourseDetails = async () => {
+        setTutorLoading(true);
+        try {
+          const courseDetails = await getCourse(selectedCourseId);
+          setSelectedCourse(courseDetails);
+        } catch (error) {
+          toast({ title: "Error fetching course details", variant: "destructive" });
+        } finally {
+          setTutorLoading(false);
+        }
+      };
+      fetchCourseDetails();
+    }
+  }, [selectedCourseId, toast]);
 
 
   const handleAskTutor = async () => {
-    if (!tutorQuestion.trim()) return;
-    setTutorLoading(true);
-    const newHistory = [...tutorHistory, { type: 'user' as const, text: tutorQuestion }];
-    setTutorHistory(newHistory);
+    if (!tutorQuestion.trim() || !selectedCourse) return;
+    
+    const currentQuestion = tutorQuestion;
+    setTutorHistory(prev => [...prev, { type: 'user' as const, text: currentQuestion }]);
     setTutorQuestion("");
+    setTutorLoading(true);
+    
     try {
       const result = await aiTutoringAssistant({
-        question: tutorQuestion,
-        courseMaterials: "Vast knowledge of all course materials." // In a real app, you would fetch relevant course materials
+        question: currentQuestion,
+        course: selectedCourse,
       });
       setTutorHistory(prev => [...prev, { type: 'ai', text: result.answer }]);
     } catch (error) {
@@ -134,7 +156,9 @@ export function DashboardStudent() {
         description: "There was an error getting an answer from the AI tutor. Please try again.",
         variant: "destructive",
       });
-       setTutorHistory(newHistory); // Reset history if AI fails
+      // Put the user's question back in the input if the AI fails
+      setTutorQuestion(currentQuestion);
+      setTutorHistory(prev => prev.slice(0, -1)); // Remove the user's last message from history
     }
     setTutorLoading(false);
   };
@@ -172,7 +196,7 @@ export function DashboardStudent() {
                     <Card key={i}><CardContent className="p-4"><Skeleton className="w-full h-56"/></CardContent></Card>
                 ))
             ) : (
-                courses.map((course) => (
+                enrolledCourses.slice(0,2).map((course) => (
                     <CourseCard key={course.id} course={course} />
                 ))
             )}
@@ -225,7 +249,16 @@ export function DashboardStudent() {
                     <Bot className="h-6 w-6 text-primary"/>
                     <CardTitle className="font-headline">AI Tutoring Assistant</CardTitle>
                 </div>
-                <CardDescription>Ask a question about your course material.</CardDescription>
+                 <Select onValueChange={setSelectedCourseId} disabled={tutorLoading}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a course for context..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {enrolledCourses.map(course => (
+                      <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
             </CardHeader>
             <CardContent className="flex-grow flex flex-col gap-4">
                 <div className="flex-grow space-y-4 overflow-y-auto p-4 bg-muted/50 rounded-lg">
@@ -246,6 +279,16 @@ export function DashboardStudent() {
                             )}
                         </div>
                     ))}
+                     {tutorLoading && (
+                        <div className="flex items-start gap-3">
+                            <Avatar className="h-8 w-8 border">
+                                <AvatarFallback>AI</AvatarFallback>
+                            </Avatar>
+                            <div className="p-3 rounded-lg bg-background flex items-center">
+                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                            </div>
+                        </div>
+                    )}
                 </div>
                  <Textarea 
                     placeholder="Type your question here..." 
@@ -258,10 +301,11 @@ export function DashboardStudent() {
                             handleAskTutor();
                         }
                     }}
+                    disabled={!selectedCourseId || tutorLoading}
                  />
             </CardContent>
             <CardFooter>
-                <Button className="w-full" onClick={handleAskTutor} disabled={tutorLoading}>
+                <Button className="w-full" onClick={handleAskTutor} disabled={tutorLoading || !selectedCourseId || !tutorQuestion.trim()}>
                     {tutorLoading ? "Thinking..." : "Ask AI"}
                 </Button>
             </CardFooter>

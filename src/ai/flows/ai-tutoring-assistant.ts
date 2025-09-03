@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI tutoring assistant that answers student questions using course materials.
@@ -10,9 +11,29 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
+const LessonSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  type: z.enum(['article', 'video', 'audio', 'quiz', 'file', 'youtube']),
+  content: z.string(),
+  duration: z.string().optional(),
+  completed: z.boolean(),
+});
+
+const ModuleSchema = z.object({
+    id: z.string(),
+    title: z.string(),
+    lessons: z.array(LessonSchema)
+});
+
 const AiTutoringAssistantInputSchema = z.object({
   question: z.string().describe('The question from the student.'),
-  courseMaterials: z.string().describe('The relevant course materials.'),
+  course: z.object({
+    id: z.string(),
+    title: z.string(),
+    description: z.string(),
+    modules: z.array(ModuleSchema)
+  }).describe('The course context for the question.'),
 });
 export type AiTutoringAssistantInput = z.infer<typeof AiTutoringAssistantInputSchema>;
 
@@ -29,11 +50,21 @@ const prompt = ai.definePrompt({
   name: 'aiTutoringAssistantPrompt',
   input: {schema: AiTutoringAssistantInputSchema},
   output: {schema: AiTutoringAssistantOutputSchema},
-  prompt: `You are an AI tutoring assistant. Answer the student's question using the provided course materials.
+  prompt: `You are an AI tutoring assistant for a platform called CampusLearn. You must answer the student's question based *only* on the provided course materials. If the answer cannot be found in the materials, state that you do not have that information in the course content.
 
-Course Materials: {{{courseMaterials}}}
+Course Title: {{{course.title}}}
+Course Description: {{{course.description}}}
 
-Question: {{{question}}}
+Course Modules and Lessons:
+{{#each course.modules}}
+Module: {{title}}
+  {{#each lessons}}
+  - Lesson: {{title}} (Type: {{type}})
+    Content: {{content}}
+  {{/each}}
+{{/each}}
+
+Student's Question: {{{question}}}
 
 Answer:`,
 });
