@@ -53,7 +53,7 @@ export default function SignupPage() {
         email: user.email!,
         role: 'student', // Default role
         status: 'Active',
-        avatar: `https://i.pravatar.cc/150?u=${firstName}`,
+        avatar: `https://i.pravatar.cc/150?u=${user.uid}`,
       };
       await setUser(user.uid, newUser);
 
