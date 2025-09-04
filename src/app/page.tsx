@@ -109,7 +109,7 @@ export default function LoginPage() {
       </div>
       <div className="hidden bg-muted lg:flex items-center justify-center p-8">
         <div className="w-full h-full bg-background rounded-lg flex items-center justify-center">
-          <Logo />
+          <Logo size="large" />
         </div>
       </div>
     </div>

@@ -70,12 +70,10 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="w-full h-screen flex items-center justify-center p-4">
-      <Card className="mx-auto max-w-sm">
+    <div className="w-full h-screen lg:grid lg:grid-cols-2">
+      <div className="flex items-center justify-center py-12">
+      <Card className="mx-auto max-w-sm w-full">
         <CardHeader>
-          <div className="flex justify-center mb-4">
-            <Logo />
-          </div>
           <CardTitle className="text-2xl font-headline">Sign Up</CardTitle>
           <CardDescription>
             Enter your information to create an account
@@ -144,6 +142,12 @@ export default function SignupPage() {
           </div>
         </CardContent>
       </Card>
+      </div>
+      <div className="hidden bg-muted lg:flex items-center justify-center p-8">
+        <div className="w-full h-full bg-background rounded-lg flex items-center justify-center">
+          <Logo size="large" />
+        </div>
+      </div>
     </div>
   );
 }
