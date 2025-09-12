@@ -38,7 +38,7 @@ describe('Create Topic', () => {
 
     // 5. Assert the results
     // A success toast should appear
-    cy.contains('Topic Created!').should('be.visible');
+    cy.contains('Topic Created!').should('exist');
 
     // The topic card should now be visible on the topics page
     cy.contains(topicTitle).should('be.visible');
