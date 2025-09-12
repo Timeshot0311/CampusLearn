@@ -13,7 +13,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:e2e:open": "cypress open",
-    "test:e2e": "cypress run"
+    "test:e2e": "cypress run --browser chrome"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.7",
