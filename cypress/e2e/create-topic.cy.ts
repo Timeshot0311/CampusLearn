@@ -2,8 +2,12 @@ describe('Create Topic', () => {
   beforeEach(() => {
     // Log in as a student before each test
     cy.visit('/');
-    cy.get('#email').type('student@campus.com');
-    cy.get('#password').type('password');
+
+    const email = Cypress.env('CYPRESS_TEST_USER_EMAIL');
+    const password = Cypress.env('CYPRESS_TEST_USER_PASSWORD');
+
+    cy.get('#email').type(email);
+    cy.get('#password').type(password);
     cy.get('form').submit();
     cy.url().should('include', '/dashboard');
   });

@@ -3,10 +3,12 @@ describe('Login Page', () => {
     // 1. Visit the login page
     cy.visit('/');
 
-    // 2. Find elements by ID, type into them
-    // Note: Use a valid test user from your Firestore database
-    cy.get('#email').type('student@campus.com');
-    cy.get('#password').type('password');
+    // 2. Get credentials from Cypress environment variables
+    const email = Cypress.env('CYPRESS_TEST_USER_EMAIL');
+    const password = Cypress.env('CYPRESS_TEST_USER_PASSWORD');
+    
+    cy.get('#email').type(email);
+    cy.get('#password').type(password);
 
     // 3. Find the submit button and click it
     cy.get('form').submit();
