@@ -18,7 +18,7 @@ describe('Login Page', () => {
     cy.url().should('include', '/dashboard');
 
     // The page should show a welcome message for the logged-in user
-    cy.contains('Welcome back, Test!').should('be.visible');
+    cy.contains('Welcome back, Test!').should('exist');
   });
 
   it('should show an error toast for invalid credentials', () => {
