@@ -23,7 +23,7 @@ describe('Create Topic', () => {
     const topicTitle = `Cypress Test Topic - ${new Date().getTime()}`;
     const topicDescription = 'This is a test description for a topic created via a Cypress test.';
 
-    // Wait for the dialog to be fully open and interactive before proceeding
+    // *** FIX: Wait for the dialog to be fully open and interactive before proceeding ***
     cy.contains('button', 'Create Topic').should('be.visible');
 
     cy.get('#title').type(topicTitle);
