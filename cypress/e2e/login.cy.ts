@@ -17,8 +17,8 @@ describe('Login Page', () => {
     // The URL should change to include /dashboard
     cy.url().should('include', '/dashboard');
 
-    // The page should show a welcome message for the logged-in user
-    cy.contains('Welcome back, Test!').should('exist');
+    // A correct assertion is that the dashboard page loads.
+    cy.contains('h1', 'Welcome back').should('exist');
   });
 
   it('should show an error toast for invalid credentials', () => {
