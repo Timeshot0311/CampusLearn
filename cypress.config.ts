@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 export default defineConfig({
+  projectId: 'w6fycg',
   e2e: {
     baseUrl: 'http://localhost:9002',
     setupNodeEvents(on, config) {
