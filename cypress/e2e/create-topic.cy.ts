@@ -29,8 +29,8 @@ describe('Create Topic', () => {
     cy.get('#title').type(topicTitle);
     cy.get('#description').type(topicDescription);
     
-    // Click the course dropdown and select the first option
-    cy.get('button[role="combobox"]').click();
+    // Click the course dropdown that is inside the dialog and select the first option
+    cy.contains('div', 'Create a New Help Topic').parent().find('button[role="combobox"]').click();
     cy.get('[role="option"]').first().click();
 
     // 4. Submit the form
